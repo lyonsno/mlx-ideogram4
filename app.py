@@ -335,6 +335,7 @@ It's running [Ideogram 4](https://ideogram.ai) — a 9.3B parameter text-to-imag
 with best-in-class text rendering — at 4-bit NF4 precision through custom Metal kernels.
 
 Expect ~10 minutes per image at 512×512. This little guy has 16 GB of RAM and a lot of heart. Go grab a coffee.
+The queue is tiny because, well, it's one laptop. Be patient with it.
 
 <details>
 <summary><b>What is NF4?</b></summary>
@@ -378,6 +379,17 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
 ---
     """)
 
+    # === Gallery (above the generator so it's visible on load) ===
+    if _gallery_images:
+        gr.Markdown("### Generated with NF4 on this Mac")
+        gr.Gallery(
+            value=_gallery_images[:12],
+            columns=4,
+            height=250,
+            label="Gallery",
+            show_label=False,
+        )
+
     # === Generator ===
     with gr.Row():
         with gr.Column(scale=1):
@@ -419,17 +431,6 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
         inputs=[prompt],
         label="Try these (click to load)",
     )
-
-    # === Gallery ===
-    if _gallery_images:
-        gr.Markdown("---\n### Previously generated with NF4")
-        gr.Gallery(
-            value=_gallery_images[:12],
-            columns=4,
-            height=300,
-            label="Gallery",
-            show_label=False,
-        )
 
     # === Performance table ===
     gr.Markdown("""
