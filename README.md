@@ -45,27 +45,58 @@ Same prompt, same seed (2025), same machine (M4 Max 128 GB), uncontended:
 | **32 GB** | **1024 ✓** | 512 ✓, 1024 barely | 512 ✓ |
 | **48 GB+** | All ✓ | All ✓ | All ✓ |
 
-## Quick start
+## Install
+
+Requires macOS on Apple Silicon (M1+) and Python 3.10+.
 
 ```bash
-# Requires: MLX with NF4 support (from our fork) + mlx-vlm + HuggingFace access
-# Accept the license at https://huggingface.co/ideogram-ai/ideogram-4-nf4
+# 1. Clone this repo
+git clone https://github.com/lyonsno/mlx-ideogram4.git
+cd mlx-ideogram4
 
+# 2. Install MLX with NF4 support (our fork — adds NF4 Metal kernels)
+pip install git+https://github.com/lyonsno/mlx.git@nf4
+
+# 3. Install this package and dependencies
+pip install -e .
+
+# 4. Accept the Ideogram4 license and log in to HuggingFace
+#    Visit: https://huggingface.co/ideogram-ai/ideogram-4-nf4
+#    Then:
+huggingface-cli login
+
+# 5. Generate! (first run downloads ~16 GB of model weights)
 python generate.py \
-  --prompt '{"prompt": "a red cat sitting on a blue couch"}' \
-  --output cat.png \
-  --preset V4_DEFAULT_20
+  --prompt "a red cat sitting on a blue couch" \
+  --output cat.png
+```
 
-# Writes cat.png + cat_receipt.json with full route identity and timing
+Or with `uv` (no venv needed):
+
+```bash
+git clone https://github.com/lyonsno/mlx-ideogram4.git
+cd mlx-ideogram4
+uv run --with "mlx @ git+https://github.com/lyonsno/mlx.git@nf4" \
+  --with safetensors --with huggingface_hub --with numpy \
+  --with transformers --with pillow --with tqdm --with mlx-lm --with mlx-vlm \
+  python generate.py --prompt "a red cat sitting on a blue couch" --output cat.png
+```
+
+### Gradio UI
+
+```bash
+pip install gradio
+python app.py              # local UI at http://127.0.0.1:7860
+python app.py --share      # public URL (tunneled through Gradio)
 ```
 
 ### Presets
 
-| Preset | Steps | Best for |
-|--------|------:|----------|
-| `V4_TURBO_12` | 12 | Fast preview |
-| `V4_DEFAULT_20` | 20 | Good balance (recommended) |
-| `V4_QUALITY_48` | 48 | Highest quality |
+```bash
+python generate.py --prompt "your prompt" --preset V4_TURBO_12    # fast preview
+python generate.py --prompt "your prompt" --preset V4_DEFAULT_20  # good balance (default)
+python generate.py --prompt "your prompt" --preset V4_QUALITY_48  # highest quality
+```
 
 ## Architecture
 

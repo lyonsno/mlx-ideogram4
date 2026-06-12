@@ -1,0 +1,27 @@
+[project]
+name = "mlx-ideogram4"
+version = "0.1.0"
+description = "Ideogram4 9.3B text-to-image on Apple Silicon via NF4 Metal kernels"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "safetensors",
+    "huggingface-hub",
+    "transformers",
+    "pillow",
+    "tqdm",
+    "mlx-lm",
+    "mlx-vlm",
+]
+
+[project.optional-dependencies]
+ui = ["gradio>=4.0"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["*.py"]
