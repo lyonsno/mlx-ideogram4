@@ -137,15 +137,15 @@ def _load_models(progress=gr.Progress()):
     progress(1.0, desc="Ready!")
 
 
-def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress()):
+def generate(prompt_text, use_json, seed, preset_name, width, height, progress=gr.Progress()):
     """Generate an image from a text prompt."""
     _load_models(progress)
 
-    # Wrap in JSON if plain text
-    if not prompt_text.strip().startswith("{"):
-        prompt = json.dumps({"prompt": prompt_text})
-    else:
+    # In JSON mode, pass through raw. Otherwise wrap plain text.
+    if use_json:
         prompt = prompt_text
+    else:
+        prompt = json.dumps({"prompt": prompt_text})
 
     preset = PRESETS[preset_name]
     num_steps = preset["steps"]
@@ -278,8 +278,6 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
     gr.Markdown("""
     # Ideogram4 NF4 on Apple Silicon
     *9.3B parameter text-to-image through custom NF4 Metal kernels. 11.5 GB peak memory.*
-
-    Plain text works, but Ideogram4 was trained on structured JSON — use the examples below for best results.
     """)
 
     with gr.Row():
@@ -287,9 +285,11 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
             prompt = gr.Textbox(
                 label="Prompt",
                 placeholder='a red cat sitting on a blue couch',
-                lines=3,
+                lines=2,
                 value='a red cat sitting on a blue couch',
             )
+            use_json = gr.Checkbox(label="Advanced JSON mode", value=False,
+                                   info="Edit raw JSON prompt (for style/layout control)")
             with gr.Row():
                 seed = gr.Number(label="Seed", value=42, precision=0)
                 preset = gr.Dropdown(
@@ -310,19 +310,19 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
 
     gr.Examples(
         examples=[
-            ['{"prompt": "a red cat sitting on a blue couch"}'],
-            ['{"prompt": "the word HELLO written in neon lights on a brick wall at night"}'],
-            ['{"prompt": "a cup of coffee with latte art on a wooden table, morning light"}'],
-            ['{"high_level_description": "Bold black letters NF4 inside an Apple logo silhouette on white background", "style_description": {"aesthetics": "minimal graphic design", "medium": "digital vector art"}, "compositional_deconstruction": {"background": "pure white", "elements": [{"type": "text", "desc": "NF4 in bold black"}, {"type": "obj", "desc": "Apple logo silhouette"}]}}'],
-            ['{"high_level_description": "A vintage travel poster for Mars", "style_description": {"aesthetics": "retro 1960s NASA poster", "art_style": "screenprint", "color_palette": ["#CC3300", "#FF6600", "#000033", "#FFFFFF"]}, "compositional_deconstruction": {"background": "deep space navy", "elements": [{"type": "text", "text": "VISIT MARS", "desc": "Large bold retro text at top"}, {"type": "obj", "desc": "Stylized red Mars with tiny rocket approaching"}]}}'],
-            ['{"high_level_description": "A cozy bookshop interior with warm lighting", "style_description": {"aesthetics": "warm atmospheric", "photo": "interior photography", "lighting": "golden hour through windows"}, "compositional_deconstruction": {"background": "wooden bookshelves floor to ceiling", "elements": [{"type": "obj", "desc": "Overstuffed armchair with a cat curled up"}, {"type": "obj", "desc": "Stack of books on a side table with a steaming mug"}]}}'],
+            ["a red cat sitting on a blue couch"],
+            ["the word HELLO written in neon lights on a brick wall at night"],
+            ["a cup of coffee with latte art on a wooden table, morning light"],
+            ["bold black letters NF4 inside an Apple logo silhouette, minimal graphic design, white background"],
+            ["a vintage travel poster for Mars, retro 1960s NASA screenprint style, text reads VISIT MARS"],
+            ["a cozy bookshop interior, golden hour light through windows, cat curled up in an armchair"],
         ],
         inputs=[prompt],
-        label="Example prompts (click to use)",
+        label="Examples (click to use)",
     )
 
     btn.click(fn=generate,
-              inputs=[prompt, seed, preset, width, height],
+              inputs=[prompt, use_json, seed, preset, width, height],
               outputs=[output_image, info],
               show_progress="minimal")
 
