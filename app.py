@@ -329,15 +329,9 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon") as demo:
     gr.Markdown("""
 # Ideogram4 NF4 on Apple Silicon
 
-**This is really running on one little Mac right now.** Not a cloud GPU, not a cluster —
-a MacBook Pro with 16 GB of RAM, sitting on a desk, doing its best.
+This is running on a MacBook Pro with 16 GB of RAM, sitting on a desk, doing its best.
 
-It's running [Ideogram 4](https://ideogram.ai) — a 9.3B parameter text-to-image model
-with best-in-class text rendering — at 4-bit NF4 precision through custom Metal kernels.
-The whole thing fits in **11.5 GB** of memory. The FP8 version needs 28 GB and can't run here.
-
-**Expect ~10 minutes per image at 512×512.** This little guy has 16 GB of RAM and a lot of heart.
-Go grab a coffee. ☕ The queue is tiny because, well, it's one laptop. Be patient with it.
+Expect ~10 minutes per image at 512×512. This little guy has 16 GB of RAM and a lot of heart. Go grab a coffee.
 
 <details>
 <summary><b>What is NF4?</b></summary>
