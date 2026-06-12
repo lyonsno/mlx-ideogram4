@@ -304,7 +304,6 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
 
         with gr.Column(scale=1):
             output_image = gr.Image(label="Diffusion Preview", type="pil",
-                                    placeholder_text="Click Generate to start...",
                                     height=512)
             info = gr.Textbox(label="Status", interactive=False,
                               value="Ready — select a prompt and click Generate")
