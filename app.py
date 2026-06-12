@@ -9,12 +9,14 @@ import gc
 import glob
 
 sys.path.insert(0, os.path.dirname(__file__))
-MLX_DEV = os.path.expanduser("~/dev/mlx/python")
-if os.path.isdir(MLX_DEV):
-    sys.path.insert(0, MLX_DEV)
-MLX_VLM = os.path.expanduser("~/dev/mlx-vlm")
-if os.path.isdir(MLX_VLM):
-    sys.path.insert(0, MLX_VLM)
+
+# Optional: override MLX and mlx-vlm paths via environment variables.
+_MLX_PATH = os.environ.get("MLX_FORK_PATH", "")
+if _MLX_PATH and os.path.isdir(_MLX_PATH):
+    sys.path.insert(0, _MLX_PATH)
+_VLM_PATH = os.environ.get("MLX_VLM_PATH", "")
+if _VLM_PATH and os.path.isdir(_VLM_PATH):
+    sys.path.insert(0, _VLM_PATH)
 
 import mlx.core as mx
 import numpy as np

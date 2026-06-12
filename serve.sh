@@ -22,6 +22,7 @@ echo "[$(date -Iseconds)] Starting Ideogram4 NF4 server" >> "$LOG_FILE"
 exec uv run \
   --with safetensors --with huggingface_hub --with numpy \
   --with requests --with transformers --with pillow \
-  --with tqdm --with mlx-lm --with gradio \
+  --with tqdm --with mlx-lm --with mlx-vlm --with gradio \
+  --with "mlx @ git+https://github.com/lyonsno/mlx.git@nf4" \
   python -u app.py "$@" \
   >> "$LOG_FILE" 2>&1
