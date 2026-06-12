@@ -331,6 +331,9 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon") as demo:
 
 This is running on a MacBook Pro with 16 GB of RAM, sitting on a desk, doing its best.
 
+It's running [Ideogram 4](https://ideogram.ai) — a 9.3B parameter text-to-image model
+with best-in-class text rendering — at 4-bit NF4 precision through custom Metal kernels.
+
 Expect ~10 minutes per image at 512×512. This little guy has 16 GB of RAM and a lot of heart. Go grab a coffee.
 
 <details>
