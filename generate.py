@@ -34,6 +34,36 @@ import numpy as np
 from PIL import Image
 
 
+def _assert_nf4_available():
+    """Fail loud if the active MLX lacks NF4 support.
+
+    Stock PyPI MLX does not implement quantization mode 'nf4' — it lives only
+    in the lyonsno/mlx@nf4 fork. A mixed install (fork's C++ core but stock
+    Python layers, or stock MLX silently reinstalled by an mlx-vlm dependency)
+    otherwise surfaces as a cryptic `KeyError: 'nf4'` deep inside a layer
+    constructor mid-run, after the model has started loading. Probe up front
+    so the failure names its own fix.
+    """
+    try:
+        w = mx.random.normal((64, 64)).astype(mx.float16)
+        q = mx.quantize(w, bits=4, group_size=64, mode="nf4")
+        mx.eval(q[0])
+    except Exception as e:
+        raise SystemExit(
+            "\nNF4 support is NOT active in the current MLX install.\n"
+            f"  (probe failed: {type(e).__name__}: {e})\n\n"
+            "NF4 lives only in the fork, not PyPI MLX. Most likely a stock MLX\n"
+            "got installed (often pulled in transitively by mlx-lm/mlx-vlm) and\n"
+            "shadowed the fork. Reinstall the fork LAST:\n\n"
+            "    pip install --force-reinstall --no-deps "
+            "git+https://github.com/lyonsno/mlx.git@nf4\n\n"
+            "Verify with:  python -c \"import mlx.core as mx; "
+            "mx.quantize(mx.zeros((64,64)).astype(mx.float16), "
+            "bits=4, group_size=64, mode='nf4')\"\n"
+            "Or point MLX_FORK_PATH at a built fork checkout's python/ dir.\n"
+        )
+
+
 ACTIVATION_LAYERS = (0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 35)
 
 PRESETS = {
@@ -58,6 +88,10 @@ def main():
     parser.add_argument("--model", default="ideogram-ai/ideogram-4-nf4")
     parser.add_argument("--receipt", default=None, help="Write JSON receipt to this path")
     args = parser.parse_args()
+
+    # Probe NF4 support before any model work, but after argparse so --help
+    # still works on a broken install. Fails loud with the exact fix.
+    _assert_nf4_available()
 
     preset = PRESETS[args.preset]
     num_steps = args.steps or preset["steps"]

@@ -20,6 +20,8 @@ The NF4 kernels are model-agnostic linear primitives. Ideogram4 proves they can 
 
 Same prompt, same seed (2025), same machine (M4 Max 128 GB), uncontended. Memory is MLX-reported peak active memory during sampling (excludes model loading overhead):
 
+<sub>**How memory is measured.** Peak figures come from MLX's own allocator counter, `mlx.core.get_peak_memory()` (bytes of GPU/unified memory at the high-water mark), read at the point noted per number — *sampling-only* for the benchmark tables (counter reset after model load), *full-run including load* for the 16 GB verification below. We report MLX's allocator peak rather than process RSS because RSS undercounts MLX's unified-memory buffers. As an independent cross-check, the 16 GB run was also traced at the system level (`vm_stat` / `vm.swapusage` sampled every 2s) to observe swap/compression behavior; that trace is what backs the "leaned on compression, never swapped" statement, not the memory numbers themselves.</sub>
+
 ### 512×512
 
 | Route | Format | Steps | s/step | Sampling | Peak Memory |
@@ -46,6 +48,18 @@ Same prompt, same seed (2025), same machine (M4 Max 128 GB), uncontended. Memory
 | **24 GB** | **1024 ✓** | ✗ | 512 maybe |
 | **32 GB** | **1024 ✓** | 512 ✓, 1024 barely | 512 ✓ |
 | **48 GB+** | All ✓ | All ✓ | All ✓ |
+
+**Verified on 16 GB** (M2 Pro MacBook Pro): 512×512 / 20 steps ran to completion
+in **9m48s** (21.8s/step — slower than the M4 Max purely from the smaller GPU)
+at **11.51 GB** full-run peak (MLX `get_peak_memory()`, including model load —
+essentially identical to the sampling-only 11.5 GB measured on the M4 Max, so
+load does not blow the budget). A 2-second system-level trace (`vm_stat`) shows
+the machine **leaned hard on memory compression — peak ~7.8 GB compressed, free
+memory routinely under ~100 MB — but never paged to swap** (swap stayed at 0
+throughout). It stayed responsive; the slowdown tracks the GPU gap, not memory
+pressure. The M2 Pro's GPU is a step up from the base M-series chip in the
+cheapest 16 GB MacBook Pro, but the 16 GB memory ceiling — the thing that gates
+whether the model fits at all — is identical.
 
 ## Install
 
