@@ -327,4 +327,16 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
               show_progress="minimal")
 
 if __name__ == "__main__":
-    demo.launch()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--share", action="store_true", help="Create public Gradio URL")
+    parser.add_argument("--auth", type=str, default=None, help="user:password for basic auth")
+    args = parser.parse_args()
+
+    auth = None
+    if args.auth:
+        user, pw = args.auth.split(":", 1)
+        auth = (user, pw)
+
+    demo.queue(max_size=2)
+    demo.launch(share=args.share, auth=auth)
