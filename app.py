@@ -329,11 +329,15 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon") as demo:
     gr.Markdown("""
 # Ideogram4 NF4 on Apple Silicon
 
-**You are looking at a live demo running on one Mac.**
-This is [Ideogram 4](https://ideogram.ai) — a 9.3B parameter state-of-the-art text-to-image model
-with best-in-class text rendering — running through custom NF4 Metal kernels at 4-bit precision.
+**This is really running on one little Mac right now.** Not a cloud GPU, not a cluster —
+a MacBook Pro with 16 GB of RAM, sitting on a desk, doing its best.
 
-It fits in **11.5 GB** of memory. The FP8 version needs 28 GB. This one runs on a base 16 GB MacBook Pro.
+It's running [Ideogram 4](https://ideogram.ai) — a 9.3B parameter text-to-image model
+with best-in-class text rendering — at 4-bit NF4 precision through custom Metal kernels.
+The whole thing fits in **11.5 GB** of memory. The FP8 version needs 28 GB and can't run here.
+
+**Expect ~10 minutes per image at 512×512.** This little guy has 16 GB of RAM and a lot of heart.
+Go grab a coffee. ☕ The queue is tiny because, well, it's one laptop. Be patient with it.
 
 <details>
 <summary><b>What is NF4?</b></summary>
@@ -349,9 +353,9 @@ the same checkpoint files, half the memory of FP8.
 </details>
 
 <details>
-<summary><b>Want to run it yourself?</b></summary>
+<summary><b>Want to run it yourself? (no dependency hell, we promise)</b></summary>
 
-No dependency hell — six commands from zero to generating:
+Five commands from zero to generating:
 
 ```
 git clone https://github.com/lyonsno/mlx-ideogram4.git && cd mlx-ideogram4
@@ -362,7 +366,10 @@ python generate.py --prompt "a red cat on a blue couch" --output cat.png
 ```
 
 The fork install goes last because mlx-vlm pulls stock MLX as a dependency.
-`generate.py` will fail loud with an exact fix if NF4 isn't active.
+If something goes wrong, `generate.py` will fail loud and tell you the exact fix.
+
+On a bigger Mac (M4 Max etc.) it's **~2 minutes** instead of 10. On this little 16 GB box it's slower
+but it *fits*, which is the whole point.
 
 Repo: [github.com/lyonsno/mlx-ideogram4](https://github.com/lyonsno/mlx-ideogram4)
 NF4 MLX fork: [github.com/lyonsno/mlx/tree/nf4](https://github.com/lyonsno/mlx/tree/nf4)
@@ -396,7 +403,7 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
                 width = gr.Slider(256, 1024, value=512, step=16, label="Width")
                 height = gr.Slider(256, 1024, value=512, step=16, label="Height")
             btn = gr.Button("Generate", variant="primary", size="lg")
-            gr.Markdown("*⏱ ~2 min at 512×512 / 20 steps. Queue is tiny — this is one Mac.*")
+            gr.Markdown("*⏱ ~10 min on this 16 GB box. One job at a time. The little guy is trying his hardest.*")
 
         with gr.Column(scale=1):
             output_image = gr.Image(label="Output", type="pil", height=512)
