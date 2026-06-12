@@ -151,6 +151,9 @@ def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress
     num_steps = preset["steps"]
     guidance = preset["guidance"]
 
+    # Yield loading state immediately
+    yield None, f"Loading models... ({num_steps} steps, {int(width)}×{int(height)})"
+
     import math
     schedule_mean = preset["mu"]
     if width != 512 or height != 512:
@@ -159,7 +162,7 @@ def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress
     steps = make_step_intervals(num_steps)
 
     # Tokenize
-    progress(0, desc="Tokenizing...")
+    yield None, "Tokenizing prompt..."
     tokenizer = _state["tokenizer"]
     messages = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
     text = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
@@ -167,7 +170,7 @@ def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress
     num_text_tokens = len(token_ids_np)
 
     # Text encoder
-    progress(0.05, desc=f"Encoding text ({num_text_tokens} tokens)...")
+    yield None, f"Encoding text ({num_text_tokens} tokens)..."
     tm = _state["text_model"]
     ids = mx.array(token_ids_np[None, :])
     B, L = ids.shape
@@ -205,6 +208,7 @@ def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress
     tp = mx.zeros((1, num_text_tokens, 128))
 
     # Sample
+    yield None, f"Starting diffusion ({ni} image tokens, {num_steps} steps)..."
     seed = int(seed)
     mx.random.seed(seed)
     z = mx.random.normal((1, ni, 128))
@@ -299,8 +303,11 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
             btn = gr.Button("Generate", variant="primary", size="lg")
 
         with gr.Column(scale=1):
-            output_image = gr.Image(label="Generated Image", type="pil")
-            info = gr.Textbox(label="Info", interactive=False)
+            output_image = gr.Image(label="Diffusion Preview", type="pil",
+                                    placeholder_text="Click Generate to start...",
+                                    height=512)
+            info = gr.Textbox(label="Status", interactive=False,
+                              value="Ready — select a prompt and click Generate")
 
     gr.Examples(
         examples=[
