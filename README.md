@@ -56,11 +56,15 @@ Requires macOS on Apple Silicon (M1+) and Python 3.10+.
 git clone https://github.com/lyonsno/mlx-ideogram4.git
 cd mlx-ideogram4
 
-# 2. Install MLX with NF4 support (our fork — adds NF4 Metal kernels)
-pip install git+https://github.com/lyonsno/mlx.git@nf4
-
-# 3. Install this package and dependencies
+# 2. Install this package and dependencies FIRST
+#    (this pulls mlx-lm/mlx-vlm, which depend on stock MLX)
 pip install -e .
+
+# 3. Install MLX with NF4 support LAST so the fork wins
+#    (our fork — adds NF4 Metal kernels. Must come after step 2, or
+#     mlx-vlm's stock-MLX dependency silently overwrites it and you
+#     get `KeyError: 'nf4'` at runtime.)
+pip install --force-reinstall --no-deps git+https://github.com/lyonsno/mlx.git@nf4
 
 # 4. Accept the Ideogram4 license and log in to HuggingFace
 #    Visit: https://huggingface.co/ideogram-ai/ideogram-4-nf4
@@ -78,6 +82,9 @@ Or with `uv` (no venv needed):
 ```bash
 git clone https://github.com/lyonsno/mlx-ideogram4.git
 cd mlx-ideogram4
+# Note: mlx-lm/mlx-vlm pull stock MLX, which can shadow the NF4 fork in the
+# resolved environment. If you hit `KeyError: 'nf4'`, fall back to the pip flow
+# above (install deps first, then --force-reinstall --no-deps the nf4 fork).
 uv run --with "mlx @ git+https://github.com/lyonsno/mlx.git@nf4" \
   --with safetensors --with huggingface_hub --with numpy \
   --with transformers --with pillow --with tqdm --with mlx-lm --with mlx-vlm \
