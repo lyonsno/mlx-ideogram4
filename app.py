@@ -240,7 +240,8 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
     cond_model = _state["cond_model"]
     uncond_model = _state["uncond_model"]
 
-    # Preview every ~5 steps so you can watch it emerge
+    # Preview every ~5 steps (disabled in public mode to save memory)
+    previews_enabled = os.environ.get("NF4_NO_PREVIEW") != "1"
     preview_interval = max(1, min(5, num_steps // 4))
     decoder = _state["decoder"]
     gh, gw_grid = inp["grid_h"], inp["grid_w"]
@@ -276,12 +277,15 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
         # Yield preview at intervals — decode and display intermediate result
         if step_num % preview_interval == 0 and step_num < num_steps:
             elapsed = time.perf_counter() - t0
-            try:
-                preview_pixels = decode_latents(decoder, z, gh, gw_grid, LATENT_SHIFT, LATENT_SCALE)
-                mx.eval(preview_pixels)
-                preview_np = np.array(preview_pixels[0]).transpose(1, 2, 0)
-                preview_img = Image.fromarray(preview_np)
-            except Exception:
+            if previews_enabled:
+                try:
+                    preview_pixels = decode_latents(decoder, z, gh, gw_grid, LATENT_SHIFT, LATENT_SCALE)
+                    mx.eval(preview_pixels)
+                    preview_np = np.array(preview_pixels[0]).transpose(1, 2, 0)
+                    preview_img = Image.fromarray(preview_np)
+                except Exception:
+                    preview_img = None
+            else:
                 preview_img = None
             step_info = (f"Step {step_num}/{num_steps} | {elapsed:.0f}s elapsed | "
                          f"{elapsed/step_num:.1f}s/step")
@@ -454,10 +458,10 @@ if __name__ == "__main__":
     if args.public:
         # Lock down for public hosting:
         # - Queue size 1 (one person waits, everyone else gets "queue full")
-        # - Force 512 max resolution and turbo preset in the UI
-        # - The actual generation function already handles this
+        # - Disable previews (save memory on small boxes)
+        os.environ["NF4_NO_PREVIEW"] = "1"
         demo.queue(max_size=1, default_concurrency_limit=1)
-        print("PUBLIC MODE: queue=1, one job at a time", flush=True)
+        print("PUBLIC MODE: queue=1, one job at a time, previews disabled", flush=True)
     else:
         demo.queue(max_size=2)
 
