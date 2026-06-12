@@ -308,13 +308,69 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
     yield img, info
 
 
+# Collect gallery images from evidence
+_GALLERY_DIR = os.path.join(os.path.dirname(__file__), "evidence")
+_gallery_images = []
+for subdir in ["matrix", "comparison", ""]:
+    d = os.path.join(_GALLERY_DIR, subdir) if subdir else _GALLERY_DIR
+    if os.path.isdir(d):
+        for f in sorted(os.listdir(d)):
+            if f.startswith("nf4_") and f.endswith(".png"):
+                _gallery_images.append(os.path.join(d, f))
+
 # Build UI
-with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon") as demo:
+
+    # === Header ===
     gr.Markdown("""
-    # Ideogram4 NF4 on Apple Silicon
-    *9.3B parameter text-to-image through custom NF4 Metal kernels. 11.5 GB peak memory.*
+# Ideogram4 NF4 on Apple Silicon
+
+**You are looking at a live demo running on one Mac.**
+This is [Ideogram 4](https://ideogram.ai) — a 9.3B parameter state-of-the-art text-to-image model
+with best-in-class text rendering — running through custom NF4 Metal kernels at 4-bit precision.
+
+It fits in **11.5 GB** of memory. The FP8 version needs 28 GB. This one runs on a base 16 GB MacBook Pro.
+
+<details>
+<summary><b>What is NF4?</b></summary>
+
+NF4 (NormalFloat4) is a 4-bit quantization format from the [QLoRA paper](https://arxiv.org/abs/2305.14314)
+used by [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes). It places 16 quantization
+levels at the quantiles of a normal distribution — optimal for neural network weights, which are roughly Gaussian.
+
+Until now, NF4 was CUDA-only. We wrote [Metal kernels for MLX](https://github.com/lyonsno/mlx/tree/nf4)
+that load official bitsandbytes NF4 weights directly on Apple Silicon. No re-quantization, no conversion —
+the same checkpoint files, half the memory of FP8.
+
+</details>
+
+<details>
+<summary><b>Want to run it yourself?</b></summary>
+
+No dependency hell — six commands from zero to generating:
+
+```
+git clone https://github.com/lyonsno/mlx-ideogram4.git && cd mlx-ideogram4
+pip install -e .
+pip install --force-reinstall --no-deps git+https://github.com/lyonsno/mlx.git@nf4
+huggingface-cli login
+python generate.py --prompt "a red cat on a blue couch" --output cat.png
+```
+
+The fork install goes last because mlx-vlm pulls stock MLX as a dependency.
+`generate.py` will fail loud with an exact fix if NF4 isn't active.
+
+Repo: [github.com/lyonsno/mlx-ideogram4](https://github.com/lyonsno/mlx-ideogram4)
+NF4 MLX fork: [github.com/lyonsno/mlx/tree/nf4](https://github.com/lyonsno/mlx/tree/nf4)
+
+Model weights are under [Ideogram's non-commercial license](https://huggingface.co/ideogram-ai/ideogram-4-nf4).
+
+</details>
+
+---
     """)
 
+    # === Generator ===
     with gr.Row():
         with gr.Column(scale=1):
             prompt = gr.Textbox(
@@ -324,7 +380,7 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
                 value='a red cat sitting on a blue couch',
             )
             use_json = gr.Checkbox(label="Advanced JSON mode", value=False,
-                                   info="Edit raw JSON prompt (for style/layout control)")
+                                   info="Edit raw JSON for style/layout control")
             with gr.Row():
                 seed = gr.Number(label="Seed", value=42, precision=0)
                 preset = gr.Dropdown(
@@ -336,12 +392,12 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
                 width = gr.Slider(256, 1024, value=512, step=16, label="Width")
                 height = gr.Slider(256, 1024, value=512, step=16, label="Height")
             btn = gr.Button("Generate", variant="primary", size="lg")
+            gr.Markdown("*⏱ ~2 min at 512×512 / 20 steps. Queue is tiny — this is one Mac.*")
 
         with gr.Column(scale=1):
-            output_image = gr.Image(label="Diffusion Preview", type="pil",
-                                    height=512)
+            output_image = gr.Image(label="Output", type="pil", height=512)
             info = gr.Textbox(label="Status", interactive=False,
-                              value="Ready — select a prompt and click Generate")
+                              value="Ready — pick a prompt and click Generate")
 
     gr.Examples(
         examples=[
@@ -349,12 +405,37 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
             ["the word HELLO written in neon lights on a brick wall at night"],
             ["a cup of coffee with latte art on a wooden table, morning light"],
             ["bold black letters NF4 inside an Apple logo silhouette, minimal graphic design, white background"],
-            ["a vintage travel poster for Mars, retro 1960s NASA screenprint style, text reads VISIT MARS"],
+            ["a serene mountain lake at sunset, snow-capped peaks reflected in still water, golden hour"],
             ["a cozy bookshop interior, golden hour light through windows, cat curled up in an armchair"],
         ],
         inputs=[prompt],
-        label="Examples (click to use)",
+        label="Try these (click to load)",
     )
+
+    # === Gallery ===
+    if _gallery_images:
+        gr.Markdown("---\n### Previously generated with NF4")
+        gr.Gallery(
+            value=_gallery_images[:12],
+            columns=4,
+            height=300,
+            label="Gallery",
+            show_label=False,
+        )
+
+    # === Performance table ===
+    gr.Markdown("""
+---
+### Performance (uncontended, M4 Max 128 GB)
+
+| | NF4/MLX (this) | MFLUX FP8 |
+|---|---|---|
+| **512×512 / 20 steps** | **3.3s/step, 67s sampling** | 3.3s/step, 66s sampling |
+| **Peak memory** | **11.5 GB** | **28.1 GB** |
+| **Fits 16 GB Mac?** | **Yes** | No |
+
+Same speed. 2.4× less memory. Built from scratch in one session.
+    """)
 
     btn.click(fn=generate,
               inputs=[prompt, use_json, seed, preset, width, height],
