@@ -278,19 +278,6 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
     Plain text works, but Ideogram4 was trained on structured JSON — use the examples below for best results.
     """)
 
-    examples = gr.Examples(
-        examples=[
-            ['{"prompt": "a red cat sitting on a blue couch"}'],
-            ['{"prompt": "the word HELLO written in neon lights on a brick wall at night"}'],
-            ['{"prompt": "a cup of coffee with latte art on a wooden table, morning light"}'],
-            ['{"high_level_description": "Bold black letters NF4 inside an Apple logo silhouette on white background", "style_description": {"aesthetics": "minimal graphic design", "medium": "digital vector art"}, "compositional_deconstruction": {"background": "pure white", "elements": [{"type": "text", "desc": "NF4 in bold black"}, {"type": "obj", "desc": "Apple logo silhouette"}]}}'],
-            ['{"high_level_description": "A vintage travel poster for Mars", "style_description": {"aesthetics": "retro 1960s NASA poster", "art_style": "screenprint", "color_palette": ["#CC3300", "#FF6600", "#000033", "#FFFFFF"]}, "compositional_deconstruction": {"background": "deep space navy", "elements": [{"type": "text", "text": "VISIT MARS", "desc": "Large bold retro text at top"}, {"type": "obj", "desc": "Stylized red Mars with tiny rocket approaching"}]}}'],
-            ['{"high_level_description": "A cozy bookshop interior with warm lighting", "style_description": {"aesthetics": "warm atmospheric", "photo": "interior photography", "lighting": "golden hour through windows"}, "compositional_deconstruction": {"background": "wooden bookshelves floor to ceiling", "elements": [{"type": "obj", "desc": "Overstuffed armchair with a cat curled up"}, {"type": "obj", "desc": "Stack of books on a side table with a steaming mug"}]}}'],
-        ],
-        inputs=[prompt],
-        label="Example prompts (click to use)",
-    )
-
     with gr.Row():
         with gr.Column(scale=1):
             prompt = gr.Textbox(
@@ -314,6 +301,19 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
         with gr.Column(scale=1):
             output_image = gr.Image(label="Generated Image", type="pil")
             info = gr.Textbox(label="Info", interactive=False)
+
+    gr.Examples(
+        examples=[
+            ['{"prompt": "a red cat sitting on a blue couch"}'],
+            ['{"prompt": "the word HELLO written in neon lights on a brick wall at night"}'],
+            ['{"prompt": "a cup of coffee with latte art on a wooden table, morning light"}'],
+            ['{"high_level_description": "Bold black letters NF4 inside an Apple logo silhouette on white background", "style_description": {"aesthetics": "minimal graphic design", "medium": "digital vector art"}, "compositional_deconstruction": {"background": "pure white", "elements": [{"type": "text", "desc": "NF4 in bold black"}, {"type": "obj", "desc": "Apple logo silhouette"}]}}'],
+            ['{"high_level_description": "A vintage travel poster for Mars", "style_description": {"aesthetics": "retro 1960s NASA poster", "art_style": "screenprint", "color_palette": ["#CC3300", "#FF6600", "#000033", "#FFFFFF"]}, "compositional_deconstruction": {"background": "deep space navy", "elements": [{"type": "text", "text": "VISIT MARS", "desc": "Large bold retro text at top"}, {"type": "obj", "desc": "Stylized red Mars with tiny rocket approaching"}]}}'],
+            ['{"high_level_description": "A cozy bookshop interior with warm lighting", "style_description": {"aesthetics": "warm atmospheric", "photo": "interior photography", "lighting": "golden hour through windows"}, "compositional_deconstruction": {"background": "wooden bookshelves floor to ceiling", "elements": [{"type": "obj", "desc": "Overstuffed armchair with a cat curled up"}, {"type": "obj", "desc": "Stack of books on a side table with a steaming mug"}]}}'],
+        ],
+        inputs=[prompt],
+        label="Example prompts (click to use)",
+    )
 
     btn.click(fn=generate,
               inputs=[prompt, seed, preset, width, height],
