@@ -1,0 +1,26 @@
+{
+  "route": "nf4-mlx-metal",
+  "model": "ideogram-ai/ideogram-4-nf4",
+  "quant_format": "bitsandbytes NF4 (4-bit, blocksize=64)",
+  "backend": "MLX + custom NF4 Metal kernels",
+  "prompt": "{\"high_level_description\":\"The bold letters NF4 in black, arranged inside the silhouette of the Apple logo. The apple shape is formed by the negative space around the letters. Clean graphic design on a white background.\",\"style_description\":{\"aesthetics\":\"minimal graphic design\",\"lighting\":\"flat\",\"medium\":\"digital vector art\",\"color_palette\":[\"#000000\",\"#FFFFFF\"]},\"compositional_deconstruction\":{\"canvas\":\"1024 x 1024 square canvas\",\"background\":\"pure white\",\"layout\":\"centered single element\",\"elements\":[{\"type\":\"text\",\"desc\":\"Large bold black letters NF4 filling the shape of an apple silhouette\"},{\"type\":\"obj\",\"desc\":\"Apple logo silhouette formed as negative space around and behind the text\"}]}}",
+  "seed": 2025,
+  "resolution": "1024x1024",
+  "steps": 20,
+  "preset": "V4_DEFAULT_20",
+  "device": "Apple Silicon",
+  "output": "/tmp/nf4_1024_uncontended.png",
+  "time_text_encoder_s": 18.5,
+  "time_sampling_s": 607.5,
+  "time_per_step_s": 30.38,
+  "time_total_s": 670.9,
+  "memory_active_gb": 0.66,
+  "memory_peak_gb": 13.74,
+  "image_tokens": 4096,
+  "text_tokens": 163,
+  "pixel_range": [
+    0,
+    255
+  ],
+  "pixel_std": 87.9
+}
