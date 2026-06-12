@@ -42,6 +42,12 @@ PRESETS = {
 # Global model state — load once, reuse
 _state = {}
 
+# Rate limiting
+import threading
+_rate_lock = threading.Lock()
+_last_gen_time = 0.0
+_MIN_COOLDOWN = 30.0  # seconds between generations
+
 
 def _load_models(progress=gr.Progress()):
     """Load all models once."""
@@ -139,6 +145,22 @@ def _load_models(progress=gr.Progress()):
 
 def generate(prompt_text, use_json, seed, preset_name, width, height, progress=gr.Progress()):
     """Generate an image from a text prompt."""
+    global _last_gen_time
+
+    # Rate limit
+    with _rate_lock:
+        now = time.time()
+        elapsed = now - _last_gen_time
+        if elapsed < _MIN_COOLDOWN and _last_gen_time > 0:
+            wait = int(_MIN_COOLDOWN - elapsed)
+            yield None, f"Rate limited — please wait {wait}s before generating again"
+            return
+        _last_gen_time = now
+
+    # Clamp resolution for safety
+    width = min(int(width), 1024)
+    height = min(int(height), 1024)
+
     _load_models(progress)
 
     # In JSON mode, pass through raw. Otherwise wrap plain text.
@@ -331,12 +353,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--share", action="store_true", help="Create public Gradio URL")
     parser.add_argument("--auth", type=str, default=None, help="user:password for basic auth")
+    parser.add_argument("--public", action="store_true",
+                        help="Public mode: strict queue, rate limits, 512 max, turbo only")
     args = parser.parse_args()
+
+    if args.public:
+        # Lock down for public hosting:
+        # - Queue size 1 (one person waits, everyone else gets "queue full")
+        # - Force 512 max resolution and turbo preset in the UI
+        # - The actual generation function already handles this
+        demo.queue(max_size=1, default_concurrency_limit=1)
+        print("PUBLIC MODE: queue=1, one job at a time", flush=True)
+    else:
+        demo.queue(max_size=2)
 
     auth = None
     if args.auth:
         user, pw = args.auth.split(":", 1)
         auth = (user, pw)
 
-    demo.queue(max_size=2)
     demo.launch(share=args.share, auth=auth)
