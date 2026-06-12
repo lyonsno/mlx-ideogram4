@@ -243,6 +243,13 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
     decoder = _state["decoder"]
     gh, gw_grid = inp["grid_h"], inp["grid_w"]
 
+    # Reset peak memory to capture sampling-only peak
+    mx.get_peak_memory()  # read to clear
+    try:
+        mx.reset_peak_memory()
+    except AttributeError:
+        pass  # older MLX versions
+
     t0 = time.perf_counter()
     for i in range(num_steps - 1, -1, -1):
         step_num = num_steps - i
@@ -279,18 +286,22 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
             yield preview_img, step_info
 
     sampling_time = time.perf_counter() - t0
+    sampling_peak = mx.get_peak_memory() / 1e9
 
     # Final VAE decode
     progress(0.95, desc="Final decode...")
     pixels = decode_latents(decoder, z, gh, gw_grid, LATENT_SHIFT, LATENT_SCALE)
     mx.eval(pixels)
+    total_peak = mx.get_peak_memory() / 1e9
 
     pn = np.array(pixels[0]).transpose(1, 2, 0)
     img = Image.fromarray(pn)
 
-    info = (f"{width}×{height} | {num_steps} steps | {sampling_time:.0f}s sampling "
-            f"({sampling_time/num_steps:.1f}s/step) | seed {seed} | "
-            f"NF4 Metal kernels | {mx.get_peak_memory()/1e9:.1f} GB peak")
+    active = mx.get_active_memory() / 1e9
+    info = (f"{int(width)}×{int(height)} | {num_steps} steps | {sampling_time:.0f}s sampling "
+            f"({sampling_time/num_steps:.1f}s/step) | seed {int(seed)}\n"
+            f"Memory: {active:.1f} GB active | {sampling_peak:.1f} GB sampling peak | "
+            f"{total_peak:.1f} GB total peak (incl. previews)")
 
     yield img, info
 
