@@ -212,10 +212,16 @@ def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress
     cond_model = _state["cond_model"]
     uncond_model = _state["uncond_model"]
 
+    # Decide which steps get previews — roughly every 25% of progress
+    preview_interval = max(1, num_steps // 4)
+    decoder = _state["decoder"]
+    gh, gw_grid = inp["grid_h"], inp["grid_w"]
+
     t0 = time.perf_counter()
     for i in range(num_steps - 1, -1, -1):
-        progress((num_steps - i) / num_steps * 0.8 + 0.1,
-                 desc=f"Sampling step {num_steps - i}/{num_steps}...")
+        step_num = num_steps - i
+        progress(step_num / num_steps * 0.8 + 0.1,
+                 desc=f"Sampling step {step_num}/{num_steps}...")
         tv = schedule(steps[i + 1:i + 2]).item()
         sv = schedule(steps[i:i + 1]).item()
         t = mx.array([tv])
@@ -232,24 +238,32 @@ def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress
         z = z + v * (sv - tv)
         mx.eval(z)
 
+        # Yield preview at intervals
+        if step_num % preview_interval == 0 and step_num < num_steps:
+            elapsed = time.perf_counter() - t0
+            preview_pixels = decode_latents(decoder, z, gh, gw_grid, LATENT_SHIFT, LATENT_SCALE)
+            mx.eval(preview_pixels)
+            preview_np = np.array(preview_pixels[0]).transpose(1, 2, 0)
+            preview_img = Image.fromarray(preview_np)
+            info = (f"Step {step_num}/{num_steps} | {elapsed:.0f}s elapsed | "
+                    f"{elapsed/step_num:.1f}s/step | previewing...")
+            yield preview_img, info
+
     sampling_time = time.perf_counter() - t0
 
-    # VAE decode
-    progress(0.95, desc="Decoding image...")
-    decoder = _state["decoder"]
-    gh, gw = inp["grid_h"], inp["grid_w"]
-    pixels = decode_latents(decoder, z, gh, gw, LATENT_SHIFT, LATENT_SCALE)
+    # Final VAE decode
+    progress(0.95, desc="Final decode...")
+    pixels = decode_latents(decoder, z, gh, gw_grid, LATENT_SHIFT, LATENT_SCALE)
     mx.eval(pixels)
 
     pn = np.array(pixels[0]).transpose(1, 2, 0)
     img = Image.fromarray(pn)
 
-    total = time.perf_counter() - t0
     info = (f"{width}×{height} | {num_steps} steps | {sampling_time:.0f}s sampling "
             f"({sampling_time/num_steps:.1f}s/step) | seed {seed} | "
             f"NF4 Metal kernels | {mx.get_peak_memory()/1e9:.1f} GB peak")
 
-    return img, info
+    yield img, info
 
 
 # Build UI
