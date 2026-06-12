@@ -1,0 +1,26 @@
+{
+  "route": "nf4-mlx-metal",
+  "model": "ideogram-ai/ideogram-4-nf4",
+  "quant_format": "bitsandbytes NF4 (4-bit, blocksize=64)",
+  "backend": "MLX + custom NF4 Metal kernels",
+  "prompt": "a white ceramic coffee cup with intricate latte art on a rustic wooden table, soft morning light from a window, shallow depth of field, product photography",
+  "seed": 42,
+  "resolution": "512x512",
+  "steps": 20,
+  "preset": "V4_DEFAULT_20",
+  "device": "Apple Silicon",
+  "output": "/tmp/matrix/nf4_product.png",
+  "time_text_encoder_s": 26.9,
+  "time_sampling_s": 66.5,
+  "time_per_step_s": 3.33,
+  "time_total_s": 146.9,
+  "memory_active_gb": 0.32,
+  "memory_peak_gb": 11.52,
+  "image_tokens": 1024,
+  "text_tokens": 38,
+  "pixel_range": [
+    0,
+    255
+  ],
+  "pixel_std": 49.1
+}

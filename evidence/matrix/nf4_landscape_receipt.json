@@ -1,0 +1,26 @@
+{
+  "route": "nf4-mlx-metal",
+  "model": "ideogram-ai/ideogram-4-nf4",
+  "quant_format": "bitsandbytes NF4 (4-bit, blocksize=64)",
+  "backend": "MLX + custom NF4 Metal kernels",
+  "prompt": "a serene mountain lake at sunset, snow-capped peaks reflected in perfectly still water, golden hour light, pine trees along the shore, landscape photography",
+  "seed": 7,
+  "resolution": "512x512",
+  "steps": 20,
+  "preset": "V4_DEFAULT_20",
+  "device": "Apple Silicon",
+  "output": "/tmp/matrix/nf4_landscape.png",
+  "time_text_encoder_s": 17.5,
+  "time_sampling_s": 68.7,
+  "time_per_step_s": 3.44,
+  "time_total_s": 126.5,
+  "memory_active_gb": 0.32,
+  "memory_peak_gb": 11.52,
+  "image_tokens": 1024,
+  "text_tokens": 37,
+  "pixel_range": [
+    0,
+    255
+  ],
+  "pixel_std": 59.1
+}

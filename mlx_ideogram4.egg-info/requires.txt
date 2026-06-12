@@ -1,0 +1,11 @@
+numpy
+safetensors
+huggingface-hub
+transformers
+pillow
+tqdm
+mlx-lm
+mlx-vlm
+
+[ui]
+gradio>=4.0

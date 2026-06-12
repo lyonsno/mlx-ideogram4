@@ -1,0 +1,26 @@
+{
+  "route": "nf4-mlx-metal",
+  "model": "ideogram-ai/ideogram-4-nf4",
+  "quant_format": "bitsandbytes NF4 (4-bit, blocksize=64)",
+  "backend": "MLX + custom NF4 Metal kernels",
+  "prompt": "a chalkboard menu for a coffee shop, handwritten text reads TODAY SPECIAL Cappuccino 4.50, white chalk on dark green board, warm cafe lighting, wooden frame",
+  "seed": 123,
+  "resolution": "512x512",
+  "steps": 20,
+  "preset": "V4_DEFAULT_20",
+  "device": "Apple Silicon",
+  "output": "/tmp/matrix/nf4_chalk.png",
+  "time_text_encoder_s": 25.5,
+  "time_sampling_s": 67.4,
+  "time_per_step_s": 3.37,
+  "time_total_s": 148.6,
+  "memory_active_gb": 0.32,
+  "memory_peak_gb": 11.52,
+  "image_tokens": 1024,
+  "text_tokens": 45,
+  "pixel_range": [
+    0,
+    255
+  ],
+  "pixel_std": 54.5
+}
