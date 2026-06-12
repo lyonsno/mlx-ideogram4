@@ -212,8 +212,8 @@ def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress
     cond_model = _state["cond_model"]
     uncond_model = _state["uncond_model"]
 
-    # Decide which steps get previews — roughly every 25% of progress
-    preview_interval = max(1, num_steps // 4)
+    # Preview every ~5 steps so you can watch it emerge
+    preview_interval = max(1, min(5, num_steps // 4))
     decoder = _state["decoder"]
     gh, gw_grid = inp["grid_h"], inp["grid_w"]
 
@@ -238,16 +238,19 @@ def generate(prompt_text, seed, preset_name, width, height, progress=gr.Progress
         z = z + v * (sv - tv)
         mx.eval(z)
 
-        # Yield preview at intervals
+        # Yield preview at intervals — decode and display intermediate result
         if step_num % preview_interval == 0 and step_num < num_steps:
             elapsed = time.perf_counter() - t0
-            preview_pixels = decode_latents(decoder, z, gh, gw_grid, LATENT_SHIFT, LATENT_SCALE)
-            mx.eval(preview_pixels)
-            preview_np = np.array(preview_pixels[0]).transpose(1, 2, 0)
-            preview_img = Image.fromarray(preview_np)
-            info = (f"Step {step_num}/{num_steps} | {elapsed:.0f}s elapsed | "
-                    f"{elapsed/step_num:.1f}s/step | previewing...")
-            yield preview_img, info
+            try:
+                preview_pixels = decode_latents(decoder, z, gh, gw_grid, LATENT_SHIFT, LATENT_SCALE)
+                mx.eval(preview_pixels)
+                preview_np = np.array(preview_pixels[0]).transpose(1, 2, 0)
+                preview_img = Image.fromarray(preview_np)
+            except Exception:
+                preview_img = None
+            step_info = (f"Step {step_num}/{num_steps} | {elapsed:.0f}s elapsed | "
+                         f"{elapsed/step_num:.1f}s/step")
+            yield preview_img, step_info
 
     sampling_time = time.perf_counter() - t0
 
@@ -302,7 +305,8 @@ with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon", theme=gr.themes.Soft()) 
 
     btn.click(fn=generate,
               inputs=[prompt, seed, preset, width, height],
-              outputs=[output_image, info])
+              outputs=[output_image, info],
+              show_progress="minimal")
 
 if __name__ == "__main__":
     demo.launch()
