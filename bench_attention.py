@@ -191,9 +191,10 @@ def main():
     import os
     import glob
     from huggingface_hub import hf_hub_download
+    from hf_auth import resolve_hf_token
     from load_weights import load_nf4_transformer
 
-    token = open(os.path.expanduser("~/.cache/huggingface/token")).read().strip()
+    token = resolve_hf_token()
 
     print("Loading model...", flush=True)
     f = hf_hub_download("ideogram-ai/ideogram-4-nf4",

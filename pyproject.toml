@@ -23,5 +23,18 @@ ui = ["gradio>=4.0"]
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-include = ["*.py"]
+[tool.setuptools]
+py-modules = [
+    "app",
+    "bench",
+    "bench_attention",
+    "generate",
+    "hf_auth",
+    "load_text_encoder",
+    "load_weights",
+    "pipeline",
+    "scheduler",
+    "text_encoder",
+    "transformer",
+    "vae",
+]

@@ -28,6 +28,7 @@ from load_weights import load_nf4_transformer
 from load_text_encoder import load_nf4_text_encoder
 from pipeline import build_inputs, LATENT_SHIFT, LATENT_SCALE
 from vae import Decoder, decode_latents
+from hf_auth import resolve_hf_token
 
 ACTIVATION_LAYERS = (0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 35)
 
@@ -88,7 +89,7 @@ def _load_models(progress=gr.Progress()):
 
     _assert_nf4_available()
 
-    token = open(os.path.expanduser("~/.cache/huggingface/token")).read().strip()
+    token = resolve_hf_token()
     model_id = "ideogram-ai/ideogram-4-nf4"
 
     from huggingface_hub import hf_hub_download

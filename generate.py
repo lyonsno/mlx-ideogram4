@@ -121,10 +121,14 @@ def main():
     # === Imports ===
     from transformers import AutoTokenizer
     from huggingface_hub import hf_hub_download
+    from hf_auth import HuggingFaceTokenError, resolve_hf_token
     from scheduler import LogitNormalSchedule, make_step_intervals
     import math
 
-    token = open(os.path.expanduser("~/.cache/huggingface/token")).read().strip()
+    try:
+        token = resolve_hf_token()
+    except HuggingFaceTokenError as e:
+        raise SystemExit(str(e))
 
     schedule_mean = preset["mu"] + 0.5 * math.log(
         args.height * args.width / (512 * 512)

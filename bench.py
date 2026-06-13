@@ -126,11 +126,12 @@ def bench_step():
     import os
     import glob
     from huggingface_hub import hf_hub_download
+    from hf_auth import resolve_hf_token
     from transformer import Ideogram4Transformer
     from load_weights import load_nf4_transformer
     from pipeline import IMAGE_POSITION_OFFSET
 
-    token = open(os.path.expanduser("~/.cache/huggingface/token")).read().strip()
+    token = resolve_hf_token()
 
     print("=== Single Step Profile ===\n")
     print("Loading model...", flush=True)
