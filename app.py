@@ -6,7 +6,6 @@ import json
 import time
 import dataclasses
 import gc
-import glob
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -41,6 +40,12 @@ PRESETS = {
                        "guidance": (3.0,)*3 + (7.0,)*45},
 }
 
+DEFAULT_MAX_RESOLUTION = 1024
+PUBLIC_MAX_RESOLUTION = 512
+PUBLIC_PRESET = "V4_TURBO_12"
+MAX_PROMPT_CHARS = 2000
+PUBLIC_MODE_REQUESTED = "--public" in sys.argv[1:]
+
 # Global model state — load once, reuse
 _state = {}
 
@@ -51,10 +56,37 @@ _last_gen_time = 0.0
 _MIN_COOLDOWN = 30.0  # seconds between generations
 
 
+def _assert_nf4_available():
+    """Fail loud if the active MLX install lacks NF4 support."""
+    try:
+        w = mx.random.normal((64, 64)).astype(mx.float16)
+        q = mx.quantize(w, bits=4, group_size=64, mode="nf4")
+        mx.eval(q[0])
+    except Exception as e:
+        raise RuntimeError(
+            "\nNF4 support is NOT active in the current MLX install.\n"
+            f"  (probe failed: {type(e).__name__}: {e})\n\n"
+            "NF4 lives only in the fork, not PyPI MLX. Reinstall the fork LAST:\n\n"
+            "    pip install --force-reinstall --no-deps "
+            "git+https://github.com/lyonsno/mlx.git@nf4\n\n"
+            "Or point MLX_FORK_PATH at a built fork checkout's python/ dir.\n"
+        ) from e
+
+
+def _coerce_int(value, default, minimum, maximum):
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(value, maximum))
+
+
 def _load_models(progress=gr.Progress()):
     """Load all models once."""
     if "loaded" in _state:
         return
+
+    _assert_nf4_available()
 
     token = open(os.path.expanduser("~/.cache/huggingface/token")).read().strip()
     model_id = "ideogram-ai/ideogram-4-nf4"
@@ -91,9 +123,7 @@ def _load_models(progress=gr.Progress()):
     cfg = ModelConfig(text_config=tc, vision_config=vc, model_type="qwen3_vl",
                       image_token_id=raw.get("image_token_id", 151655))
     text_model = Qwen3VLModel(cfg)
-    wp = glob.glob(os.path.expanduser(
-        f"~/.cache/huggingface/hub/models--{model_id.replace('/', '--')}/snapshots/*/text_encoder/model.safetensors"
-    ))[0]
+    wp = hf_hub_download(model_id, "text_encoder/model.safetensors", token=token)
     load_nf4_text_encoder(wp, text_model, verbose=False)
     _state["text_model"] = text_model
 
@@ -149,7 +179,20 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
     """Generate an image from a text prompt."""
     global _last_gen_time
 
-    # Rate limit
+    max_resolution = PUBLIC_MAX_RESOLUTION if PUBLIC_MODE_REQUESTED else DEFAULT_MAX_RESOLUTION
+    width = _coerce_int(width, 512, 256, max_resolution)
+    height = _coerce_int(height, 512, 256, max_resolution)
+    try:
+        seed = int(seed)
+    except (TypeError, ValueError):
+        seed = 42
+
+    prompt_text = str(prompt_text or "")
+    if len(prompt_text) > MAX_PROMPT_CHARS:
+        yield None, f"Prompt is too long ({len(prompt_text)} chars); limit is {MAX_PROMPT_CHARS}."
+        return
+
+    # Rate limit only accepted generation requests.
     with _rate_lock:
         now = time.time()
         elapsed = now - _last_gen_time
@@ -159,10 +202,6 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
             return
         _last_gen_time = now
 
-    # Clamp resolution for safety
-    width = min(int(width), 1024)
-    height = min(int(height), 1024)
-
     _load_models(progress)
 
     # In JSON mode, pass through raw. Otherwise wrap plain text.
@@ -171,6 +210,10 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
     else:
         prompt = json.dumps({"prompt": prompt_text})
 
+    if PUBLIC_MODE_REQUESTED:
+        preset_name = PUBLIC_PRESET
+    elif preset_name not in PRESETS:
+        preset_name = "V4_DEFAULT_20"
     preset = PRESETS[preset_name]
     num_steps = preset["steps"]
     guidance = preset["guidance"]
@@ -240,8 +283,10 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
     cond_model = _state["cond_model"]
     uncond_model = _state["uncond_model"]
 
-    # Preview every ~5 steps (disabled in public mode to save memory)
-    previews_enabled = os.environ.get("NF4_NO_PREVIEW") != "1"
+    # Preview every ~5 steps locally; skip in public mode to protect memory.
+    previews_enabled = (
+        not PUBLIC_MODE_REQUESTED and os.environ.get("NF4_NO_PREVIEW") != "1"
+    )
     preview_interval = max(1, min(5, num_steps // 4))
     decoder = _state["decoder"]
     gh, gw_grid = inp["grid_h"], inp["grid_w"]
@@ -307,90 +352,22 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
     info = (f"{int(width)}×{int(height)} | {num_steps} steps | {sampling_time:.0f}s sampling "
             f"({sampling_time/num_steps:.1f}s/step) | seed {int(seed)}\n"
             f"Memory: {active:.1f} GB active | {sampling_peak:.1f} GB sampling peak | "
-            f"{total_peak:.1f} GB total peak (incl. previews)")
+            f"{total_peak:.1f} GB total peak")
 
     yield img, info
 
 
-# Collect gallery images from evidence
-_GALLERY_DIR = os.path.join(os.path.dirname(__file__), "evidence")
-_gallery_images = []
-for subdir in ["matrix", "comparison", ""]:
-    d = os.path.join(_GALLERY_DIR, subdir) if subdir else _GALLERY_DIR
-    if os.path.isdir(d):
-        for f in sorted(os.listdir(d)):
-            if f.startswith("nf4_") and f.endswith(".png"):
-                _gallery_images.append(os.path.join(d, f))
-
 # Build UI
+_preset_choices = [PUBLIC_PRESET] if PUBLIC_MODE_REQUESTED else list(PRESETS.keys())
+_default_preset = PUBLIC_PRESET if PUBLIC_MODE_REQUESTED else "V4_DEFAULT_20"
+_slider_max = PUBLIC_MAX_RESOLUTION if PUBLIC_MODE_REQUESTED else DEFAULT_MAX_RESOLUTION
+
 with gr.Blocks(title="Ideogram4 NF4 — Apple Silicon") as demo:
-
-    # === Header ===
     gr.Markdown("""
-# Ideogram4 NF4 on Apple Silicon
-
-This is running on a MacBook Pro with 16 GB of RAM, sitting on a desk, doing its best.
-
-It's running [Ideogram 4](https://ideogram.ai) — a 9.3B parameter text-to-image model
-with best-in-class text rendering — at 4-bit NF4 precision through custom Metal kernels.
-
-Expect ~10 minutes per image at 512×512. This little guy has 16 GB of RAM and a lot of heart. Go grab a coffee.
-The queue is tiny because, well, it's one laptop. Be patient with it.
-
-<details>
-<summary><b>What is NF4?</b></summary>
-
-NF4 (NormalFloat4) is a 4-bit quantization format from the [QLoRA paper](https://arxiv.org/abs/2305.14314)
-used by [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes). It places 16 quantization
-levels at the quantiles of a normal distribution — optimal for neural network weights, which are roughly Gaussian.
-
-Until now, NF4 was CUDA-only. We wrote [Metal kernels for MLX](https://github.com/lyonsno/mlx/tree/nf4)
-that load official bitsandbytes NF4 weights directly on Apple Silicon. No re-quantization, no conversion —
-the same checkpoint files, half the memory of FP8.
-
-</details>
-
-<details>
-<summary><b>Want to run it yourself? (no dependency hell, we promise)</b></summary>
-
-Five commands from zero to generating:
-
-```
-git clone https://github.com/lyonsno/mlx-ideogram4.git && cd mlx-ideogram4
-pip install -e .
-pip install --force-reinstall --no-deps git+https://github.com/lyonsno/mlx.git@nf4
-huggingface-cli login
-python generate.py --prompt "a red cat on a blue couch" --output cat.png
-```
-
-The fork install goes last because mlx-vlm pulls stock MLX as a dependency.
-If something goes wrong, `generate.py` will fail loud and tell you the exact fix.
-
-On a bigger Mac (M4 Max etc.) it's **~2 minutes** instead of 10. On this little 16 GB box it's slower
-but it *fits*, which is the whole point.
-
-Repo: [github.com/lyonsno/mlx-ideogram4](https://github.com/lyonsno/mlx-ideogram4)
-NF4 MLX fork: [github.com/lyonsno/mlx/tree/nf4](https://github.com/lyonsno/mlx/tree/nf4)
-
-Model weights are under [Ideogram's non-commercial license](https://huggingface.co/ideogram-ai/ideogram-4-nf4).
-
-</details>
-
----
+    # Ideogram4 NF4 on Apple Silicon
+    *9.3B parameter text-to-image through custom NF4 Metal kernels. 11.5 GB peak memory.*
     """)
 
-    # === Gallery (above the generator so it's visible on load) ===
-    if _gallery_images:
-        gr.Markdown("### Generated with NF4 on this Mac")
-        gr.Gallery(
-            value=_gallery_images[:12],
-            columns=4,
-            height=250,
-            label="Gallery",
-            show_label=False,
-        )
-
-    # === Generator ===
     with gr.Row():
         with gr.Column(scale=1):
             prompt = gr.Textbox(
@@ -400,24 +377,24 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
                 value='a red cat sitting on a blue couch',
             )
             use_json = gr.Checkbox(label="Advanced JSON mode", value=False,
-                                   info="Edit raw JSON for style/layout control")
+                                   info="Edit raw JSON prompt (for style/layout control)")
             with gr.Row():
                 seed = gr.Number(label="Seed", value=42, precision=0)
                 preset = gr.Dropdown(
                     label="Preset",
-                    choices=list(PRESETS.keys()),
-                    value="V4_DEFAULT_20",
+                    choices=_preset_choices,
+                    value=_default_preset,
                 )
             with gr.Row():
-                width = gr.Slider(256, 1024, value=512, step=16, label="Width")
-                height = gr.Slider(256, 1024, value=512, step=16, label="Height")
+                width = gr.Slider(256, _slider_max, value=512, step=16, label="Width")
+                height = gr.Slider(256, _slider_max, value=512, step=16, label="Height")
             btn = gr.Button("Generate", variant="primary", size="lg")
-            gr.Markdown("*⏱ ~10 min on this 16 GB box. One job at a time. The little guy is trying his hardest.*")
 
         with gr.Column(scale=1):
-            output_image = gr.Image(label="Output", type="pil", height=512)
+            output_image = gr.Image(label="Diffusion Preview", type="pil",
+                                    height=512)
             info = gr.Textbox(label="Status", interactive=False,
-                              value="Ready — pick a prompt and click Generate")
+                              value="Ready — select a prompt and click Generate")
 
     gr.Examples(
         examples=[
@@ -425,26 +402,12 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
             ["the word HELLO written in neon lights on a brick wall at night"],
             ["a cup of coffee with latte art on a wooden table, morning light"],
             ["bold black letters NF4 inside an Apple logo silhouette, minimal graphic design, white background"],
-            ["a serene mountain lake at sunset, snow-capped peaks reflected in still water, golden hour"],
+            ["a vintage travel poster for Mars, retro 1960s NASA screenprint style, text reads VISIT MARS"],
             ["a cozy bookshop interior, golden hour light through windows, cat curled up in an armchair"],
         ],
         inputs=[prompt],
-        label="Try these (click to load)",
+        label="Examples (click to use)",
     )
-
-    # === Performance table ===
-    gr.Markdown("""
----
-### Performance (uncontended, M4 Max 128 GB)
-
-| | NF4/MLX (this) | MFLUX FP8 |
-|---|---|---|
-| **512×512 / 20 steps** | **3.3s/step, 67s sampling** | 3.3s/step, 66s sampling |
-| **Peak memory** | **11.5 GB** | **28.1 GB** |
-| **Fits 16 GB Mac?** | **Yes** | No |
-
-Same speed. 2.4× less memory. Built from scratch in one session.
-    """)
 
     btn.click(fn=generate,
               inputs=[prompt, use_json, seed, preset, width, height],
@@ -463,10 +426,9 @@ if __name__ == "__main__":
     if args.public:
         # Lock down for public hosting:
         # - Queue size 1 (one person waits, everyone else gets "queue full")
-        # - Disable previews (save memory on small boxes)
-        os.environ["NF4_NO_PREVIEW"] = "1"
+        # - Server-side 512 max resolution, turbo preset, prompt cap, no previews
         demo.queue(max_size=1, default_concurrency_limit=1)
-        print("PUBLIC MODE: queue=1, one job at a time, previews disabled", flush=True)
+        print("PUBLIC MODE: queue=1, one job at a time", flush=True)
     else:
         demo.queue(max_size=2)
 

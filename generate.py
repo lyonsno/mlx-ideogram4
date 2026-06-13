@@ -15,7 +15,6 @@ import sys
 import time
 import dataclasses
 import gc
-import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
 
@@ -169,9 +168,7 @@ def main():
     cfg = ModelConfig(text_config=tc, vision_config=vc, model_type="qwen3_vl",
                       image_token_id=raw.get("image_token_id", 151655))
     tm = Qwen3VLModel(cfg)
-    wp = glob.glob(os.path.expanduser(
-        f"~/.cache/huggingface/hub/models--{args.model.replace('/', '--')}/snapshots/*/text_encoder/model.safetensors"
-    ))[0]
+    wp = hf_hub_download(args.model, "text_encoder/model.safetensors", token=token)
     load_nf4_text_encoder(wp, tm, verbose=False)
 
     ids = mx.array(token_ids_np[None, :])
