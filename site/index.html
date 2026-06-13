@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ideogram4 NF4 on Apple Silicon</title>
+  <meta name="description" content="Ideogram4 NF4 running on Apple Silicon through custom MLX Metal kernels, with a live Mac demo and reproducible receipts.">
+  <script src="demo-config.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #151515;
+      --muted: #5f636b;
+      --paper: #fafaf7;
+      --panel: #ffffff;
+      --line: #d9d9d2;
+      --accent: #e85d2a;
+      --accent-dark: #a7391f;
+      --green: #2c7d52;
+      --blue: #235f7c;
+      --steel: #39424e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 22px;
+    }
+
+    .hero {
+      min-height: 90vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, 500px);
+      gap: 40px;
+      align-items: center;
+      padding-top: 44px;
+      padding-bottom: 34px;
+    }
+
+    .kicker {
+      margin: 0 0 16px;
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 760;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(44px, 7vw, 88px);
+      line-height: 0.98;
+      font-weight: 780;
+    }
+
+    .lede {
+      max-width: 670px;
+      margin: 22px 0 0;
+      font-size: 19px;
+      line-height: 1.55;
+      color: #33363c;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .button {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border: 1px solid var(--ink);
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 740;
+      background: var(--ink);
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .button.secondary {
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .button.disabled {
+      pointer-events: none;
+      border-color: var(--line);
+      background: #ecece7;
+      color: #777b83;
+    }
+
+    .status {
+      margin: 18px 0 0;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .status strong {
+      color: var(--green);
+    }
+
+    .hero-image {
+      margin: 0;
+    }
+
+    .hero-image img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #eee;
+    }
+
+    .hero-image figcaption {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .facts {
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .facts-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      padding: 26px 0 30px;
+    }
+
+    .fact {
+      min-width: 0;
+      border-left: 3px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .fact b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .fact span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    section.band {
+      padding: 54px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.05;
+    }
+
+    .section-copy {
+      max-width: 520px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .route-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .route-item {
+      min-width: 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .route-item b {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .route-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .receipts {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .receipt {
+      min-width: 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .receipt img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      background: #eee;
+    }
+
+    .receipt-body {
+      padding: 14px;
+    }
+
+    .receipt h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    .receipt p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .hash {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--steel);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    .runtime {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .runtime-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .metric {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 25px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .install {
+      background: #111;
+      color: #f7f7f2;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .install pre {
+      margin: 0;
+      padding: 18px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    footer {
+      padding: 32px 0 44px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 850px) {
+      .hero,
+      .runtime {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 32px;
+      }
+
+      .hero-image {
+        max-width: 470px;
+      }
+
+      .facts-grid,
+      .route-grid,
+      .receipts {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .section-head {
+        display: block;
+      }
+
+      .section-copy {
+        margin-top: 12px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell {
+        padding: 0 18px;
+      }
+
+      .install pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      h1 {
+        font-size: 42px;
+      }
+
+      .lede {
+        font-size: 17px;
+      }
+
+      .actions {
+        display: grid;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      .facts-grid,
+      .route-grid,
+      .receipts,
+      .runtime-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell hero">
+    <section>
+      <p class="kicker">Live Mac demo plus reproducible receipts</p>
+      <h1>Ideogram4 NF4 on Apple Silicon</h1>
+      <p class="lede">
+        Ideogram4's 9.3B image transformer and modified Qwen3-VL text encoder,
+        running locally through MLX with custom NF4 Metal kernels. The live generator
+        is one Mac, capped for public traffic; the code, receipts, and dependency notes are here.
+      </p>
+      <div class="actions">
+        <a id="demo-link" class="button disabled" href="#" aria-disabled="true">Live demo offline</a>
+        <a id="repo-link" class="button secondary" href="https://github.com/lyonsno/mlx-ideogram4">View code</a>
+        <a id="contact-link" class="button secondary" href="https://github.com/lyonsno">Dependency help</a>
+      </div>
+      <p id="status" class="status">Tunnel target is not configured on this copy of the page.</p>
+    </section>
+    <figure class="hero-image">
+      <img src="../evidence/live_runs/20260613T165202_nf4-mlx-metal_512x512_seed42.png" alt="Latte art spelling NF4, generated by the NF4 MLX route">
+      <figcaption>Public run, seed 42, 512 x 512, 20 steps. The receipt hash is listed below.</figcaption>
+    </figure>
+  </main>
+
+  <section class="facts">
+    <div class="shell facts-grid">
+      <div class="fact"><b>Model</b><span>Ideogram4 NF4 weights under the Ideogram 4 Non-Commercial License.</span></div>
+      <div class="fact"><b>Runtime</b><span>MLX custom NF4 Metal kernels on Apple Silicon.</span></div>
+      <div class="fact"><b>Live demo</b><span>One active generation with a small public queue.</span></div>
+      <div class="fact"><b>Public cap</b><span>512 px max dimension, 20 steps max.</span></div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="shell">
+      <div class="section-head">
+        <h2>What is actually running?</h2>
+        <p class="section-copy">The point of the demo is the route. These are official bitsandbytes NF4 weights loaded directly into MLX, not a hosted image API and not a conversion to another quant stack.</p>
+      </div>
+      <div class="route-grid">
+        <div class="route-item"><b>official bitsandbytes NF4 weights</b><span>Checkpoint: <code>ideogram-ai/ideogram-4-nf4</code>, revision <code>f6643478</code>.</span></div>
+        <div class="route-item"><b>MLX custom NF4 Metal kernels</b><span>NF4 quantize, dequantize, and quantized matmul primitives in the local MLX fork.</span></div>
+        <div class="route-item"><b>not MFLUX, not PyTorch/MPS, not a remote GPU</b><span>Receipts record route identity, model revision, backend, seed, resolution, and output hash.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="shell">
+      <div class="section-head">
+        <h2>Receipts</h2>
+        <p class="section-copy">A few generated images from the same route. The live demo writes matching JSON receipts for new public runs.</p>
+      </div>
+      <div class="receipts">
+        <article class="receipt">
+          <img src="../evidence/live_runs/20260613T165202_nf4-mlx-metal_512x512_seed42.png" alt="Latte art spelling NF4">
+          <div class="receipt-body">
+            <h3>Latte NF4</h3>
+            <p>Public route, 512 x 512, 20 steps, seed 42. Peak memory 11.55 GB.</p>
+            <div class="hash">20260613T165202_nf4-mlx-metal_512x512_seed42.png<br>sha256 2176225a6aeef6c042baf03a047014cb92e067ed45aadc78ceaae5492c70ec39</div>
+          </div>
+        </article>
+        <article class="receipt">
+          <img src="../evidence/hero_nf4_apple_1024x1024.png" alt="NF4 text inside an Apple silhouette">
+          <div class="receipt-body">
+            <h3>Apple silhouette</h3>
+            <p>1024 x 1024 hero run. Generated by the same NF4/MLX code path on Apple Silicon.</p>
+            <div class="hash">hero_nf4_apple_1024x1024.png</div>
+          </div>
+        </article>
+        <article class="receipt">
+          <img src="../evidence/live_runs/20260613T153233_nf4-mlx-metal_512x512_seed42.png" alt="Generated product-style NF4 cassette">
+          <div class="receipt-body">
+            <h3>Product prompt</h3>
+            <p>Public route, 512 x 512, 20 steps, seed 42. Receipt records <code>gradio-subprocess-generate.py</code>.</p>
+            <div class="hash">20260613T153233_nf4-mlx-metal_512x512_seed42.png</div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="shell runtime">
+      <div>
+        <h2>Live demo limits</h2>
+        <p class="section-copy">
+          This is a public link to one local Mac. It is intentionally capped so Reddit traffic cannot turn
+          the box into a bad time. If the live button is offline, the page still carries the artifacts and install path.
+        </p>
+      </div>
+      <div class="runtime-list">
+        <div class="metric"><b>1</b><span>one active generation at a time</span></div>
+        <div class="metric"><b>10</b><span>public queue slots</span></div>
+        <div class="metric"><b>512</b><span>512 px max public dimension</span></div>
+        <div class="metric"><b>20</b><span>20 steps max public preset</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="shell">
+      <div class="section-head">
+        <h2>Run it yourself</h2>
+        <p class="section-copy">The dependency trap is stock MLX shadowing the NF4 fork. Install project dependencies first, then install the NF4 fork last.</p>
+      </div>
+      <div class="install">
+<pre><code>git clone https://github.com/lyonsno/mlx-ideogram4.git
+cd mlx-ideogram4
+pip install -e .
+pip install --force-reinstall --no-deps git+https://github.com/lyonsno/mlx.git@nf4
+huggingface-cli login
+python generate.py --prompt "a red cat sitting on a blue couch" --output cat.png</code></pre>
+      </div>
+      <p class="note">If you hit dependency hell, especially `KeyError: 'nf4'`, contact <a href="https://github.com/lyonsno">github.com/lyonsno</a>. The usual fix is to reinstall the NF4 fork last so it wins over stock MLX pulled by transitive dependencies.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="shell">
+      Code is MIT. Model weights are governed by the <a href="https://huggingface.co/ideogram-ai/ideogram-4-nf4">Ideogram 4 Non-Commercial License</a>. This is a technical demo, not a hosted product.
+    </div>
+  </footer>
+
+  <script>
+    const configuredUrl = window.NF4_DEMO_URL || "";
+    const repoUrl = window.NF4_REPO_URL || "https://github.com/lyonsno/mlx-ideogram4";
+    const contactUrl = window.NF4_CONTACT_URL || "https://github.com/lyonsno";
+    const demoLink = document.getElementById("demo-link");
+    const status = document.getElementById("status");
+
+    document.getElementById("repo-link").href = repoUrl;
+    document.getElementById("contact-link").href = contactUrl;
+
+    if (configuredUrl && /^https?:\/\//.test(configuredUrl)) {
+      demoLink.href = configuredUrl;
+      demoLink.textContent = "Open live Mac demo";
+      demoLink.classList.remove("disabled");
+      demoLink.removeAttribute("aria-disabled");
+      status.innerHTML = "Live backend: <strong>" + configuredUrl.replace(/^https?:\/\//, "") + "</strong>. If the Mac is asleep, the receipts and install notes still stand.";
+    }
+  </script>
+</body>
+</html>

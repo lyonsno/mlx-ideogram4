@@ -1,0 +1,38 @@
+{
+  "route": "nf4-mlx-metal",
+  "model": "ideogram-ai/ideogram-4-nf4",
+  "quant_format": "bitsandbytes NF4 (4-bit, blocksize=64)",
+  "backend": "MLX + custom NF4 Metal kernels",
+  "prompt": "{\"prompt\": \"a cup of coffee with latte art reading NF4 on a wooden table. The letters are large and clear and the art is tasteful and elaborate.\"}",
+  "seed": 42,
+  "resolution": "512x512",
+  "steps": 20,
+  "preset": "V4_DEFAULT_20",
+  "device": "Apple Silicon",
+  "output": "/Users/noahlyons/dev/mlx-ideogram4/evidence/live_runs/20260613T165202_nf4-mlx-metal_512x512_seed42.png",
+  "time_text_encoder_s": 51.9,
+  "time_sampling_s": 808.8,
+  "time_per_step_s": 40.44,
+  "time_total_s": 944.3,
+  "memory_active_gb": 0.32,
+  "memory_peak_gb": 11.55,
+  "image_tokens": 1024,
+  "text_tokens": 44,
+  "pixel_range": [
+    0,
+    255
+  ],
+  "pixel_std": 63.6,
+  "model_revision": "f664347839e0a87bc495f5c9483cc0014b8e344e",
+  "not_routes": [
+    "MFLUX",
+    "GGUF/stable-diffusion.cpp",
+    "PyTorch/MPS",
+    "remote GPU"
+  ],
+  "host": "nlm2pr.local",
+  "public_mode": true,
+  "public_server_route": "gradio-subprocess-generate.py",
+  "wall_time_s": 945.42,
+  "output_sha256": "2176225a6aeef6c042baf03a047014cb92e067ed45aadc78ceaae5492c70ec39"
+}
