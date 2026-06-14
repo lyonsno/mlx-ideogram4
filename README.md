@@ -18,7 +18,7 @@ The NF4 kernels are model-agnostic linear primitives. Ideogram4 proves they can 
 
 ## Performance
 
-Same prompt, same seed (2025), same machine (M4 Max 128 GB), uncontended. Memory is MLX-reported peak active memory during sampling (excludes model loading overhead):
+Representative receipts on Apple Silicon. Timing moves with machine contention and route setup, so the latest local smoke is listed separately from the fastest matrix receipts. Memory is MLX-reported peak active memory during sampling (excludes model loading overhead):
 
 <sub>**How memory is measured.** Peak figures come from MLX's own allocator counter, `mlx.core.get_peak_memory()` (bytes of GPU/unified memory at the high-water mark), read at the point noted per number — *sampling-only* for the benchmark tables (counter reset after model load), *full-run including load* for the 16 GB verification below. We report MLX's allocator peak rather than process RSS because RSS undercounts MLX's unified-memory buffers. As an independent cross-check, the 16 GB run was also traced at the system level (`vm_stat` / `vm.swapusage` sampled every 2s) to observe swap/compression behavior; that trace is what backs the "leaned on compression, never swapped" statement, not the memory numbers themselves.</sub>
 
@@ -26,10 +26,11 @@ Same prompt, same seed (2025), same machine (M4 Max 128 GB), uncontended. Memory
 
 | Route | Format | Steps | s/step | Sampling | Peak Memory |
 |-------|--------|------:|-------:|---------:|------------:|
-| **NF4/MLX (this)** | **NF4 4-bit** | 20 | **6.5** | **130s** | **11.5 GB** |
+| **NF4/MLX latest local smoke** | **NF4 4-bit** | 20 | **7.5** | **151s** | **11.55 GB** |
+| **NF4/MLX fast matrix receipts** | **NF4 4-bit** | 20 | **3.3-3.4** | **67-69s** | **11.52 GB** |
 | MFLUX | FP8 8-bit | 20 | 8.9 | 178s | 28.1 GB |
 
-**27% faster, 2.4× less memory.**
+Latest local smoke: `evidence/live_runs/20260614T031410Z_nf4-mlx-metal_512x512_seed2025_smoke.json`. The fast matrix receipts are older uncontended runs under `evidence/matrix/`. The defensible headline is memory: NF4 uses roughly **2.4× less memory** than the recorded MFLUX FP8 comparison at 512×512.
 
 ### 1024×1024
 
@@ -143,20 +144,6 @@ The core contribution is NF4 quantization for MLX:
 - **Full kernel family**: QMV (token gen), QVM, QMM (prefill), split-K, all instantiated across float/bfloat16/float16 × group sizes 32/64/128
 - **`mx.quantize/dequantize/quantized_matmul(mode='nf4')`** + **`nn.QuantizedLinear(mode='nf4')`**
 - **bitsandbytes weight loader**: reads NF4 safetensors directly, repacks nibbles to MLX uint32 format
-
-## How it was built
-
-One session (2026-06-10 to 2026-06-11):
-
-1. NF4 Metal kernel family from scratch (~900 lines)
-2. C++ dispatch + Python API integration (9 MLX core files)
-3. bitsandbytes NF4 safetensors weight loader
-4. Ideogram4 9.3B transformer port (34 layers, MRoPE, AdaLN, SwiGLU)
-5. Qwen3-VL 8.8B text encoder via mlx-vlm (discovered custom deepstack modules)
-6. Flux2 VAE decoder
-7. Pipeline with Euler flow-matching, logit-normal schedule, asymmetric CFG
-8. Profiling + scaled LUT optimization
-9. Three independent code reviews (kernels, weight loader, architecture parity)
 
 ## Credits
 

@@ -1,0 +1,26 @@
+{
+  "route": "nf4-mlx-metal",
+  "model": "ideogram-ai/ideogram-4-nf4",
+  "quant_format": "bitsandbytes NF4 (4-bit, blocksize=64)",
+  "backend": "MLX + custom NF4 Metal kernels",
+  "prompt": "a glowing pink neon sign reading OPEN on a dark red brick wall at night, rain-wet cobblestone street reflecting the light, moody urban atmosphere",
+  "seed": 2025,
+  "resolution": "512x512",
+  "steps": 20,
+  "preset": "V4_DEFAULT_20",
+  "device": "Apple Silicon",
+  "output": "/private/tmp/mlx-ideogram4-codex-gradio-launch-hardening-0614/evidence/live_runs/20260614T031410Z_nf4-mlx-metal_512x512_seed2025_smoke.png",
+  "time_text_encoder_s": 33.4,
+  "time_sampling_s": 150.9,
+  "time_per_step_s": 7.55,
+  "time_total_s": 280.6,
+  "memory_active_gb": 0.32,
+  "memory_peak_gb": 11.55,
+  "image_tokens": 1024,
+  "text_tokens": 39,
+  "pixel_range": [
+    0,
+    227
+  ],
+  "pixel_std": 40.2
+}
