@@ -1,0 +1,30 @@
+Collecting git+https://github.com/lyonsno/mlx.git@nf4
+  Cloning https://github.com/lyonsno/mlx.git (to revision nf4) to /private/var/folders/jf/gd265msn2_qbpy0pbmksttzh0000gn/T/pip-req-build-6i_lv8uf
+  Running command git clone --filter=blob:none --quiet https://github.com/lyonsno/mlx.git /private/var/folders/jf/gd265msn2_qbpy0pbmksttzh0000gn/T/pip-req-build-6i_lv8uf
+  Running command git checkout -b nf4 --track origin/nf4
+  Switched to a new branch 'nf4'
+  branch 'nf4' set up to track 'origin/nf4'.
+  Resolved https://github.com/lyonsno/mlx.git to commit eccb857825439dd8c24c5cc5d27e9489fc2f4eef
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx
+  Building wheel for mlx (pyproject.toml): started
+  Building wheel for mlx (pyproject.toml): still running...
+  Building wheel for mlx (pyproject.toml): still running...
+  Building wheel for mlx (pyproject.toml): finished with status 'done'
+  Created wheel for mlx: filename=mlx-0.32.0.dev20260613+eccb857-cp311-cp311-macosx_26_0_arm64.whl size=57139083 sha256=c9ca5dac9be4972c3cfce18b418b048c80d528e2e91d0e0f8d28b584d6cb7b98
+  Stored in directory: /private/var/folders/jf/gd265msn2_qbpy0pbmksttzh0000gn/T/pip-ephem-wheel-cache-yhpd10k1/wheels/7d/f6/3e/8fc3017dd54ac851424efeb509dbdc5c38aba267b68ea0cef0
+Successfully built mlx
+Installing collected packages: mlx
+  Attempting uninstall: mlx
+    Found existing installation: mlx 0.31.2
+    Uninstalling mlx-0.31.2:
+      Successfully uninstalled mlx-0.31.2
+Successfully installed mlx-0.32.0.dev20260613+eccb857
+
+[notice] A new release of pip is available: 23.2.1 -> 26.1.2
+[notice] To update, run: /private/tmp/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z/.venv/bin/python -m pip install --upgrade pip

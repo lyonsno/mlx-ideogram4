@@ -1,0 +1,17 @@
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+Ideogram4 NF4 | 512x512 | 20 steps | seed 42
+Text encoder (23 tokens)...
+Loading transformers...
+Sampling 20 steps (1024 tokens)...
+  1/20
+  5/20
+  10/20
+  15/20
+  20/20
+VAE decode...
+
+Saved: /Users/noahlyons/dev/mlx-ideogram4/evidence/clean_smokes/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z/clean_smoke_product_nf4.png (512x512)
+Sampling: 821s (41.1s/step)
+Total: 972s
+Memory: 11.51 GB peak
+Receipt: /Users/noahlyons/dev/mlx-ideogram4/evidence/clean_smokes/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z/clean_smoke_product_nf4_receipt.json

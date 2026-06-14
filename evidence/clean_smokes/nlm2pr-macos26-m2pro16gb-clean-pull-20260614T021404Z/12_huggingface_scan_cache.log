@@ -1,0 +1,13 @@
+Warning: `huggingface-cli` is deprecated and no longer works. Use `hf` instead.
+
+Hint: `hf` is already installed! Use it directly.
+
+Hint: Examples:
+  hf auth login
+  hf download unsloth/gemma-4-31B-it-GGUF
+  hf upload my-cool-model . .
+  hf models ls --search "gemma"
+  hf repos ls --format json
+  hf jobs run python:3.12 python -c 'print("Hello!")'
+  hf --help
+

@@ -496,12 +496,12 @@
         <h2>Live demo limits</h2>
         <p class="section-copy">
           This is a public link to one local Mac. It keeps a small queue and bounded controls,
-          while still letting you choose image size and 12 or 20 sampling steps.
+          while still letting you choose image size and up to 20 sampling steps.
         </p>
       </div>
       <div class="runtime-list">
         <div class="metric"><b>1</b><span>one active generation at a time</span></div>
-        <div class="metric"><b>1</b><span>one public queue slot</span></div>
+        <div class="metric"><b>10</b><span>public queue slots</span></div>
         <div class="metric"><b>512</b><span>512 px max public dimension</span></div>
         <div class="metric"><b>20</b><span>20 steps max public preset</span></div>
       </div>
@@ -519,7 +519,7 @@
 cd mlx-ideogram4
 pip install -e .
 pip install --force-reinstall --no-deps git+https://github.com/lyonsno/mlx.git@nf4
-huggingface-cli login
+hf auth login
 python generate.py --prompt "a red cat sitting on a blue couch" --output cat.png</code></pre>
       </div>
       <p class="note">If you hit `KeyError: 'nf4'`, reinstall the NF4 fork last so it wins over stock MLX pulled by transitive dependencies.</p>

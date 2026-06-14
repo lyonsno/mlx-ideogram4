@@ -1,0 +1,14 @@
+id	size	last_accessed	last_modified	refs
+model/ZhengPeng7/BiRefNet	444.6M	4 days ago	4 days ago	['main']
+model/briaai/RMBG-2.0	885.0M	3 days ago	4 days ago	['main']
+model/camenduru/dinov3-vitl16-pretrain-lvd1689m	1.2G	3 days ago	4 days ago	['main']
+model/facebook/dinov3-vitl16-pretrain-lvd1689m	1.2G	4 days ago	6 days ago	['main']
+model/ideogram-ai/ideogram-4-nf4	16.1G	2 minutes ago	2 days ago	['main']
+model/lyonsno/wilor-mlx	3.1G	6 days ago	6 days ago	['main']
+model/microsoft/TRELLIS-image-large	266.7M	4 days ago	6 days ago	['main']
+model/microsoft/TRELLIS.2-4B	12.2G	4 days ago	6 days ago	['main']
+model/mlx-community/whisper-small.en-mlx	481.3M	4 days ago	1 week ago	['main']
+model/prism-ml/Bonsai-8B-mlx-1bit	1.3G	4 days ago	1 week ago	['main']
+model/warmshao/WiLoR-mini	2.6G	6 days ago	6 days ago	['main']
+
+Found 11 repo(s) for a total of 12 revision(s) and 39.8G on disk.

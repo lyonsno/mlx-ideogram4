@@ -84,7 +84,7 @@ pip install --force-reinstall --no-deps git+https://github.com/lyonsno/mlx.git@n
 # 4. Accept the Ideogram4 license and log in to HuggingFace
 #    Visit: https://huggingface.co/ideogram-ai/ideogram-4-nf4
 #    Then:
-huggingface-cli login
+hf auth login
 
 # 5. Generate! (first run downloads ~16 GB of model weights)
 python generate.py \

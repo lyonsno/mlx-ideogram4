@@ -70,7 +70,7 @@ def _get_hf_token():
     token = get_token()
     if not token:
         raise RuntimeError(
-            "Hugging Face token not found. Run `huggingface-cli login` or set HF_TOKEN "
+            "Hugging Face token not found. Run `hf auth login` or set HF_TOKEN "
             "after accepting the Ideogram 4 NF4 license."
         )
     return token

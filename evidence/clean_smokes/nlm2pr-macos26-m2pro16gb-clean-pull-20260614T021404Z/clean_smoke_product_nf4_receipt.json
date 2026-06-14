@@ -1,0 +1,26 @@
+{
+  "route": "nf4-mlx-metal",
+  "model": "ideogram-ai/ideogram-4-nf4",
+  "quant_format": "bitsandbytes NF4 (4-bit, blocksize=64)",
+  "backend": "MLX + custom NF4 Metal kernels",
+  "prompt": "{\"prompt\":\"a clean product photo of a translucent cassette labeled NF4\"}",
+  "seed": 42,
+  "resolution": "512x512",
+  "steps": 20,
+  "preset": "V4_DEFAULT_20",
+  "device": "Apple Silicon",
+  "output": "/Users/noahlyons/dev/mlx-ideogram4/evidence/clean_smokes/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z/clean_smoke_product_nf4.png",
+  "time_text_encoder_s": 52.1,
+  "time_sampling_s": 821.3,
+  "time_per_step_s": 41.07,
+  "time_total_s": 971.9,
+  "memory_active_gb": 0.32,
+  "memory_peak_gb": 11.51,
+  "image_tokens": 1024,
+  "text_tokens": 23,
+  "pixel_range": [
+    0,
+    255
+  ],
+  "pixel_std": 51.7
+}
