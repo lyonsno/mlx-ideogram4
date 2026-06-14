@@ -2,6 +2,7 @@ import ast
 import json
 import os
 import pathlib
+import tempfile
 import unittest
 
 
@@ -18,6 +19,8 @@ def load_public_helpers():
         "_effective_request",
         "_gallery_console_visibility_css",
         "_gallery_console_visibility_head",
+        "_gallery_newest_first",
+        "_gallery_slot_paths",
         "_is_public_mode",
         "_queue_age_label",
         "_public_queue_admit",
@@ -32,6 +35,7 @@ def load_public_helpers():
         "GALLERY_ADMIN_QUERY_PARAM",
         "GALLERY_ADMIN_QUERY_VALUE",
         "GALLERY_CONSOLE_ELEM_ID",
+        "GALLERY_SLOT_COUNT",
         "QUEUE_STATUS_ELEM_ID",
         "QUEUE_STATUS_TIMER_SECONDS",
         "QUEUE_ADMIN_ELEM_ID",
@@ -369,6 +373,36 @@ class PublicModeContractTest(unittest.TestCase):
         self.assertIn("_gallery_slot_updates", source)
         self.assertIn("_hide_gallery_item", source)
         self.assertIn("_show_gallery_item", source)
+        self.assertIn("gallery-scroll-bin", source)
+        self.assertIn("max-height:520px", source)
+        self.assertIn("overflow-y:auto", source)
+        self.assertIn('elem_classes=["gallery-scroll-bin"]', source)
+        self.assertLess(
+            source.index('refresh_gallery_btn = gr.Button("Refresh Gallery")'),
+            source.index("for row in range(10):"),
+        )
+        self.assertLess(
+            source.index('promote_btn = gr.Button("Promote")'),
+            source.index("for row in range(10):"),
+        )
+
+    def test_gallery_slot_paths_keep_newest_items_reachable(self):
+        ns = load_public_helpers()
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = []
+            for index in range(ns["GALLERY_SLOT_COUNT"] + 5):
+                path = pathlib.Path(tmp) / f"generated-{index:02d}.png"
+                path.write_bytes(b"not really an image")
+                timestamp = 1_700_000_000 + index
+                os.utime(path, (timestamp, timestamp))
+                paths.append(str(path))
+
+            visible_slots = ns["_gallery_slot_paths"](ns["_gallery_newest_first"](paths))
+
+        self.assertEqual(len(visible_slots), ns["GALLERY_SLOT_COUNT"])
+        self.assertEqual(visible_slots[0], paths[-1])
+        self.assertEqual(visible_slots[-1], paths[-ns["GALLERY_SLOT_COUNT"]])
+        self.assertNotIn(paths[0], visible_slots)
 
     def test_public_gallery_console_is_operator_query_gated(self):
         ns = load_public_helpers()

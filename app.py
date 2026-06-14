@@ -282,6 +282,11 @@ body.gallery-admin-enabled .gradio-container .contain #{GALLERY_CONSOLE_ELEM_ID}
     color: #b9bbc6;
     text-align: center !important;
 }
+.gallery-scroll-bin {
+    max-height:520px;
+    overflow-y:auto;
+    padding-right:8px;
+}
 """)
     return "\n".join(css_parts)
 
@@ -834,6 +839,17 @@ def _discover_generated_images():
     return items
 
 
+def _gallery_newest_first(paths):
+    return sorted(
+        paths,
+        key=lambda path: (
+            os.path.getmtime(path) if os.path.exists(path) else 0,
+            os.path.basename(path),
+        ),
+        reverse=True,
+    )
+
+
 def _manifest_path_set(manifest, key):
     return {
         os.path.normpath(os.path.join(os.path.dirname(__file__), rel))
@@ -854,7 +870,7 @@ def _hidden_generated_images():
         path = os.path.normpath(os.path.join(os.path.dirname(__file__), rel))
         if os.path.exists(path):
             items.append(path)
-    return items
+    return _gallery_newest_first(items)
 
 
 def _featured_gallery_paths():
@@ -1952,31 +1968,6 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
         hidden_slot_tiles = []
         visible_slot_paths = _gallery_slot_paths(_visible_generated_images())
         hidden_slot_paths = _gallery_slot_paths(_hidden_generated_images())
-        with gr.Row():
-            with gr.Column():
-                gr.Markdown("#### Showing")
-                for row in range(10):
-                    with gr.Row():
-                        for col in range(4):
-                            slot = row * 4 + col
-                            tile = gr.HTML(
-                                value=_gallery_slot_html(visible_slot_paths[slot]),
-                                show_label=False,
-                                visible=bool(visible_slot_paths[slot]),
-                            )
-                            visible_slot_tiles.append(tile)
-            with gr.Column():
-                gr.Markdown("#### Hidden")
-                for row in range(10):
-                    with gr.Row():
-                        for col in range(4):
-                            slot = row * 4 + col
-                            tile = gr.HTML(
-                                value=_gallery_slot_html(hidden_slot_paths[slot]),
-                                show_label=False,
-                                visible=bool(hidden_slot_paths[slot]),
-                            )
-                            hidden_slot_tiles.append(tile)
         gallery_status = gr.Textbox(
             label="Gallery status",
             interactive=False,
@@ -1989,6 +1980,31 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
         with gr.Row():
             hide_gallery_btn = gr.Button("Hide from Gallery")
             show_gallery_btn = gr.Button("Show in Gallery")
+        with gr.Row():
+            with gr.Column(elem_classes=["gallery-scroll-bin"]):
+                gr.Markdown("#### Showing")
+                for row in range(10):
+                    with gr.Row():
+                        for col in range(4):
+                            slot = row * 4 + col
+                            tile = gr.HTML(
+                                value=_gallery_slot_html(visible_slot_paths[slot]),
+                                show_label=False,
+                                visible=bool(visible_slot_paths[slot]),
+                            )
+                            visible_slot_tiles.append(tile)
+            with gr.Column(elem_classes=["gallery-scroll-bin"]):
+                gr.Markdown("#### Hidden")
+                for row in range(10):
+                    with gr.Row():
+                        for col in range(4):
+                            slot = row * 4 + col
+                            tile = gr.HTML(
+                                value=_gallery_slot_html(hidden_slot_paths[slot]),
+                                show_label=False,
+                                visible=bool(hidden_slot_paths[slot]),
+                            )
+                            hidden_slot_tiles.append(tile)
 
     # === Performance table ===
     gr.Markdown("""
