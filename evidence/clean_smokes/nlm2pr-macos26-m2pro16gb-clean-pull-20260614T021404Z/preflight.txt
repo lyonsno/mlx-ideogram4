@@ -1,0 +1,14 @@
+SMOKE_ID=nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z
+SMOKE_ROOT=/Users/noahlyons/dev/mlx-ideogram4/evidence/clean_smokes/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z
+CLONE_ROOT=/private/tmp/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z
+START_UTC=20260614T021404Z
+HOST=nlm2pr.local
+ProductName:		macOS
+ProductVersion:		26.5.1
+BuildVersion:		25F80
+Darwin nlm2pr.local 25.5.0 Darwin Kernel Version 25.5.0: Mon Apr 27 20:39:09 PDT 2026; root:xnu-12377.121.6~2/RELEASE_ARM64_T6020 arm64
+17179869184
+Mac14,9
+Apple M2 Pro
+4cbf56e786bf912d5ce3b00d83791160fe4ece9d	HEAD
+4cbf56e786bf912d5ce3b00d83791160fe4ece9d	refs/heads/main

@@ -1,0 +1,12 @@
+Usage: hf cache [OPTIONS] COMMAND [ARGS]...
+Try 'hf cache --help' for help.
+
+Error: No such command 'scan'.
+
+Available commands for 'hf cache':
+  list                           List cached repositories or revisions.
+  prune                          Remove detached revisions from the cache.
+  rm                             Remove cached repositories or revisions.
+  verify                         Verify checksums for a single repo revision from cache or a local directory.
+
+Run 'hf cache --help' for full details.

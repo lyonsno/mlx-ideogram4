@@ -519,7 +519,7 @@
 cd mlx-ideogram4
 pip install -e .
 pip install --force-reinstall --no-deps git+https://github.com/lyonsno/mlx.git@nf4
-huggingface-cli login
+hf auth login
 python generate.py --prompt "a red cat sitting on a blue couch" --output cat.png</code></pre>
       </div>
       <p class="note">If you hit dependency hell, especially `KeyError: 'nf4'`, contact <a href="https://github.com/lyonsno">github.com/lyonsno</a>. The usual fix is to reinstall the NF4 fork last so it wins over stock MLX pulled by transitive dependencies.</p>

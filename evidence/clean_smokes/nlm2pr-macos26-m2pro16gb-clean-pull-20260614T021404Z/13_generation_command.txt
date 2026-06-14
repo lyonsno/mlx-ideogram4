@@ -1,0 +1,4 @@
+start_utc=2026-06-14T02:35:57Z
+cwd=/private/tmp/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z
+command=.venv/bin/python generate.py --prompt '{"prompt":"a clean product photo of a translucent cassette labeled NF4"}' --output "/Users/noahlyons/dev/mlx-ideogram4/evidence/clean_smokes/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z/clean_smoke_product_nf4.png" --height 512 --width 512 --seed 42 --preset V4_DEFAULT_20 --steps 20 --receipt "/Users/noahlyons/dev/mlx-ideogram4/evidence/clean_smokes/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z/clean_smoke_product_nf4_receipt.json"
+end_utc=2026-06-14T02:52:09Z

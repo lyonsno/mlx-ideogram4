@@ -1,0 +1,9 @@
+{
+  "mlx_file": "/private/tmp/nlm2pr-macos26-m2pro16gb-clean-pull-20260614T021404Z/.venv/lib/python3.11/site-packages/mlx/core.cpython-311-darwin.so",
+  "mlx_version": "0.32.0.dev20260613+eccb857",
+  "probe": "mx.quantize(mx.zeros((64,64)).astype(mx.float16), bits=4, group_size=64, mode=\"nf4\")",
+  "python": "3.11.7",
+  "return_count": 1,
+  "return_shapes": [],
+  "status": "ok"
+}

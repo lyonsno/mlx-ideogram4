@@ -1,0 +1,18 @@
+usage: generate.py [-h] --prompt PROMPT [--output OUTPUT] [--height HEIGHT]
+                   [--width WIDTH] [--seed SEED]
+                   [--preset {V4_QUALITY_48,V4_DEFAULT_20,V4_TURBO_12}]
+                   [--steps STEPS] [--model MODEL] [--receipt RECEIPT]
+
+Ideogram4 NF4 on Apple Silicon
+
+options:
+  -h, --help            show this help message and exit
+  --prompt PROMPT       JSON prompt string
+  --output OUTPUT
+  --height HEIGHT
+  --width WIDTH
+  --seed SEED
+  --preset {V4_QUALITY_48,V4_DEFAULT_20,V4_TURBO_12}
+  --steps STEPS         Override preset steps
+  --model MODEL
+  --receipt RECEIPT     Write JSON receipt to this path
