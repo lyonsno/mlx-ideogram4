@@ -29,6 +29,7 @@ from load_weights import load_nf4_transformer
 from load_text_encoder import load_nf4_text_encoder
 from pipeline import build_inputs, LATENT_SHIFT, LATENT_SCALE
 from vae import Decoder, decode_latents
+from generate import _assert_nf4_available
 
 ACTIVATION_LAYERS = (0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 35)
 
@@ -50,13 +51,103 @@ _rate_lock = threading.Lock()
 _last_gen_time = 0.0
 _MIN_COOLDOWN = 30.0  # seconds between generations
 
+MAX_PROMPT_CHARS = 2000
+DEFAULT_MAX_DIMENSION = 1024
+PUBLIC_MAX_DIMENSION = 1024
+DEFAULT_PRESET = "V4_DEFAULT_20"
+PUBLIC_PRESET = "V4_TURBO_12"
+PUBLIC_PRESETS = ["V4_TURBO_12", "V4_DEFAULT_20"]
+PUBLIC_TIMEOUT_SECONDS = int(os.environ.get("NF4_PUBLIC_TIMEOUT_SECONDS", "900"))
+_PUBLIC_MODE = "--public" in sys.argv or os.environ.get("NF4_PUBLIC_MODE") == "1"
+
+
+@dataclasses.dataclass(frozen=True)
+class GenerationRequest:
+    prompt_text: str
+    use_json: bool
+    seed: int
+    preset_name: str
+    preset: dict
+    width: int
+    height: int
+
+
+def _coerce_dimension(value, maximum):
+    try:
+        dimension = int(value)
+    except (TypeError, ValueError):
+        dimension = 512
+    return max(256, min(dimension, maximum))
+
+
+def _normalize_generation_request(prompt_text, use_json, seed, preset_name,
+                                  width, height, public_mode=None):
+    public = _PUBLIC_MODE if public_mode is None else bool(public_mode)
+    prompt_text = "" if prompt_text is None else str(prompt_text)
+    if len(prompt_text) > MAX_PROMPT_CHARS:
+        prompt_text = prompt_text[:MAX_PROMPT_CHARS]
+
+    maximum = PUBLIC_MAX_DIMENSION if public else DEFAULT_MAX_DIMENSION
+    width = _coerce_dimension(width, maximum)
+    height = _coerce_dimension(height, maximum)
+
+    if public and preset_name not in PUBLIC_PRESETS:
+        preset_name = PUBLIC_PRESET
+    elif preset_name not in PRESETS:
+        preset_name = DEFAULT_PRESET
+
+    try:
+        seed = int(seed)
+    except (TypeError, ValueError):
+        seed = 42
+
+    return GenerationRequest(
+        prompt_text=prompt_text,
+        use_json=bool(use_json),
+        seed=seed,
+        preset_name=preset_name,
+        preset=PRESETS[preset_name],
+        width=width,
+        height=height,
+    )
+
+
+def _cooldown_message(wait):
+    return f"The server is cooling down — please wait {wait}s (one Mac, shared cooldown)."
+
+
+def _get_hf_token():
+    from huggingface_hub.utils import get_token
+
+    token = get_token()
+    if not token:
+        raise RuntimeError(
+            "Hugging Face token not found. Run `huggingface-cli login` or set HF_TOKEN "
+            "after accepting the Ideogram 4 NF4 license."
+        )
+    return token
+
+
+def _generation_timeout_seconds(public_mode=None):
+    public = _PUBLIC_MODE if public_mode is None else bool(public_mode)
+    return PUBLIC_TIMEOUT_SECONDS if public else None
+
+
+def _launch_kwargs(share=False, auth=None):
+    kwargs = {"share": share, "auth": auth, "show_api": False}
+    port = os.environ.get("GRADIO_SERVER_PORT")
+    if port:
+        kwargs["server_port"] = int(port)
+    return kwargs
+
 
 def _load_models(progress=gr.Progress()):
     """Load all models once."""
     if "loaded" in _state:
         return
 
-    token = open(os.path.expanduser("~/.cache/huggingface/token")).read().strip()
+    _assert_nf4_available()
+    token = _get_hf_token()
     model_id = "ideogram-ai/ideogram-4-nf4"
 
     from huggingface_hub import hf_hub_download
@@ -69,7 +160,7 @@ def _load_models(progress=gr.Progress()):
     tok_dir = os.path.dirname(hf_hub_download(model_id, "tokenizer/tokenizer.json", token=token))
     hf_hub_download(model_id, "tokenizer/chat_template.jinja", token=token)
     hf_hub_download(model_id, "tokenizer/tokenizer_config.json", token=token)
-    _state["tokenizer"] = AutoTokenizer.from_pretrained(tok_dir, trust_remote_code=True)
+    _state["tokenizer"] = AutoTokenizer.from_pretrained(tok_dir)
 
     # Text encoder
     progress(0.1, desc="Loading text encoder (8.8B NF4)...")
@@ -155,23 +246,24 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
         elapsed = now - _last_gen_time
         if elapsed < _MIN_COOLDOWN and _last_gen_time > 0:
             wait = int(_MIN_COOLDOWN - elapsed)
-            yield None, f"Rate limited — please wait {wait}s before generating again"
+            yield None, _cooldown_message(wait)
             return
         _last_gen_time = now
 
-    # Clamp resolution for safety
-    width = min(int(width), 1024)
-    height = min(int(height), 1024)
+    request = _normalize_generation_request(prompt_text, use_json, seed,
+                                            preset_name, width, height)
+    width = request.width
+    height = request.height
 
     _load_models(progress)
 
     # In JSON mode, pass through raw. Otherwise wrap plain text.
-    if use_json:
-        prompt = prompt_text
+    if request.use_json:
+        prompt = request.prompt_text
     else:
-        prompt = json.dumps({"prompt": prompt_text})
+        prompt = json.dumps({"prompt": request.prompt_text})
 
-    preset = PRESETS[preset_name]
+    preset = request.preset
     num_steps = preset["steps"]
     guidance = preset["guidance"]
 
@@ -233,8 +325,7 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
 
     # Sample
     yield None, f"Starting diffusion ({ni} image tokens, {num_steps} steps)..."
-    seed = int(seed)
-    mx.random.seed(seed)
+    mx.random.seed(request.seed)
     z = mx.random.normal((1, ni, 128))
 
     cond_model = _state["cond_model"]
@@ -254,8 +345,12 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
         pass  # older MLX versions
 
     t0 = time.perf_counter()
+    timeout_seconds = _generation_timeout_seconds()
     for i in range(num_steps - 1, -1, -1):
         step_num = num_steps - i
+        if timeout_seconds is not None and time.perf_counter() - t0 > timeout_seconds:
+            yield None, f"Generation timed out after {timeout_seconds}s; please try again later."
+            return
         progress(step_num / num_steps * 0.8 + 0.1,
                  desc=f"Sampling step {step_num}/{num_steps}...")
         tv = schedule(steps[i + 1:i + 2]).item()
@@ -305,7 +400,7 @@ def generate(prompt_text, use_json, seed, preset_name, width, height, progress=g
 
     active = mx.get_active_memory() / 1e9
     info = (f"{int(width)}×{int(height)} | {num_steps} steps | {sampling_time:.0f}s sampling "
-            f"({sampling_time/num_steps:.1f}s/step) | seed {int(seed)}\n"
+            f"({sampling_time/num_steps:.1f}s/step) | seed {request.seed}\n"
             f"Memory: {active:.1f} GB active | {sampling_peak:.1f} GB sampling peak | "
             f"{total_peak:.1f} GB total peak (incl. previews)")
 
@@ -383,7 +478,7 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
     if _gallery_images:
         gr.Markdown("### Generated with NF4 on this Mac")
         gr.Gallery(
-            value=_gallery_images[:12],
+            value=_gallery_images,
             columns=4,
             height=250,
             label="Gallery",
@@ -398,6 +493,7 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
                 placeholder='a red cat sitting on a blue couch',
                 lines=2,
                 value='a red cat sitting on a blue couch',
+                max_length=MAX_PROMPT_CHARS,
             )
             use_json = gr.Checkbox(label="Advanced JSON mode", value=False,
                                    info="Edit raw JSON for style/layout control")
@@ -405,12 +501,13 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
                 seed = gr.Number(label="Seed", value=42, precision=0)
                 preset = gr.Dropdown(
                     label="Preset",
-                    choices=list(PRESETS.keys()),
-                    value="V4_DEFAULT_20",
+                    choices=PUBLIC_PRESETS if _PUBLIC_MODE else list(PRESETS.keys()),
+                    value=PUBLIC_PRESET if _PUBLIC_MODE else DEFAULT_PRESET,
                 )
             with gr.Row():
-                width = gr.Slider(256, 1024, value=512, step=16, label="Width")
-                height = gr.Slider(256, 1024, value=512, step=16, label="Height")
+                max_dimension = PUBLIC_MAX_DIMENSION if _PUBLIC_MODE else DEFAULT_MAX_DIMENSION
+                width = gr.Slider(256, max_dimension, value=512, step=16, label="Width")
+                height = gr.Slider(256, max_dimension, value=512, step=16, label="Height")
             btn = gr.Button("Generate", variant="primary", size="lg")
             gr.Markdown("*⏱ ~10 min on this 16 GB box. One job at a time. The little guy is trying his hardest.*")
 
@@ -435,15 +532,17 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
     # === Performance table ===
     gr.Markdown("""
 ---
-### Performance (uncontended, M4 Max 128 GB)
+### Performance receipts
 
-| | NF4/MLX (this) | MFLUX FP8 |
-|---|---|---|
-| **512×512 / 20 steps** | **3.3s/step, 67s sampling** | 3.3s/step, 66s sampling |
-| **Peak memory** | **11.5 GB** | **28.1 GB** |
-| **Fits 16 GB Mac?** | **Yes** | No |
+| Route | 512×512 / 20 steps | Peak memory |
+|---|---:|---:|
+| **NF4/MLX latest local smoke** | **7.5s/step, 151s sampling** | **11.55 GB** |
+| **NF4/MLX fast matrix receipts** | **3.3-3.4s/step, 67-69s sampling** | **11.52 GB** |
+| MFLUX FP8 recorded comparison | 8.9s/step, 178s sampling | 28.1 GB |
 
-Same speed. 2.4× less memory. Built from scratch in one session.
+Timing varies with machine contention. The latest smoke receipt is
+`evidence/live_runs/20260614T031410Z_nf4-mlx-metal_512x512_seed2025_smoke.json`.
+The defensible headline is memory: roughly 2.4× less than the recorded MFLUX FP8 comparison.
     """)
 
     btn.click(fn=generate,
@@ -457,7 +556,7 @@ if __name__ == "__main__":
     parser.add_argument("--share", action="store_true", help="Create public Gradio URL")
     parser.add_argument("--auth", type=str, default=None, help="user:password for basic auth")
     parser.add_argument("--public", action="store_true",
-                        help="Public mode: strict queue, rate limits, 512 max, turbo only")
+                        help="Public mode: strict queue, prompt cap, rate limits, and API hiding")
     args = parser.parse_args()
 
     if args.public:
@@ -466,7 +565,7 @@ if __name__ == "__main__":
         # - Disable previews (save memory on small boxes)
         os.environ["NF4_NO_PREVIEW"] = "1"
         demo.queue(max_size=1, default_concurrency_limit=1)
-        print("PUBLIC MODE: queue=1, one job at a time, previews disabled", flush=True)
+        print("PUBLIC MODE: queue=1, one job at a time, previews disabled, capped at 20 steps", flush=True)
     else:
         demo.queue(max_size=2)
 
@@ -475,4 +574,4 @@ if __name__ == "__main__":
         user, pw = args.auth.split(":", 1)
         auth = (user, pw)
 
-    demo.launch(share=args.share, auth=auth)
+    demo.launch(**_launch_kwargs(share=args.share, auth=auth))

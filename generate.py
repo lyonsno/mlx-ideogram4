@@ -64,6 +64,18 @@ def _assert_nf4_available():
         )
 
 
+def _get_hf_token():
+    from huggingface_hub.utils import get_token
+
+    token = get_token()
+    if not token:
+        raise RuntimeError(
+            "Hugging Face token not found. Run `huggingface-cli login` or set HF_TOKEN "
+            "after accepting the Ideogram 4 NF4 license."
+        )
+    return token
+
+
 ACTIVATION_LAYERS = (0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 35)
 
 PRESETS = {
@@ -125,7 +137,7 @@ def main():
     from scheduler import LogitNormalSchedule, make_step_intervals
     import math
 
-    token = open(os.path.expanduser("~/.cache/huggingface/token")).read().strip()
+    token = _get_hf_token()
 
     schedule_mean = preset["mu"] + 0.5 * math.log(
         args.height * args.width / (512 * 512)
@@ -138,7 +150,7 @@ def main():
     tok_dir = os.path.dirname(hf_hub_download(args.model, "tokenizer/tokenizer.json", token=token))
     hf_hub_download(args.model, "tokenizer/chat_template.jinja", token=token)
     hf_hub_download(args.model, "tokenizer/tokenizer_config.json", token=token)
-    tokenizer = AutoTokenizer.from_pretrained(tok_dir, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(tok_dir)
 
     messages = [{"role": "user", "content": [{"type": "text", "text": args.prompt}]}]
     text = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
