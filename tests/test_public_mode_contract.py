@@ -312,6 +312,17 @@ class PublicModeContractTest(unittest.TestCase):
         self.assertIn("admit_event.success", source)
         self.assertIn("gr.update(interactive=not _public_queue_is_full())", source)
 
+    def test_public_queue_hydrates_status_button_and_admin_on_page_load(self):
+        source = APP_PATH.read_text()
+        self.assertIn("def _queue_initial_controls", source)
+        self.assertIn("demo.load(", source)
+        self.assertIn("fn=_queue_initial_controls", source)
+        self.assertIn("outputs=[queue_status, btn, queue_admin]", source)
+        self.assertLess(
+            source.index("demo.load("),
+            source.index("admit_event = btn.click("),
+        )
+
     def test_public_generation_has_elapsed_heartbeat(self):
         ns = load_public_helpers()
         source = APP_PATH.read_text()

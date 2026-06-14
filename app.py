@@ -489,6 +489,10 @@ def _queue_admin_tick():
     return _public_queue_admin_html()
 
 
+def _queue_initial_controls():
+    return _public_queue_status_html(), _public_queue_button_update(), _public_queue_admin_html()
+
+
 def _admit_generate_click():
     if not _is_public_mode():
         return "", "Starting local generation.", _public_queue_status_html(), gr.update(interactive=True)
@@ -1805,7 +1809,12 @@ Model weights are under [Ideogram's non-commercial license](https://huggingface.
                 else:
                     width = gr.Slider(256, 1024, value=PUBLIC_WIDTH, step=16, label="Width")
                     height = gr.Slider(256, 1024, value=PUBLIC_HEIGHT, step=16, label="Height")
-            btn = gr.Button("Generate", variant="primary", size="lg")
+            btn = gr.Button(
+                "Generate",
+                variant="primary",
+                size="lg",
+                interactive=not _public_queue_is_full() if _PUBLIC_MODE else True,
+            )
             admission_token = gr.State("")
             queue_status = gr.HTML(
                 value=_public_queue_status_html(),
@@ -1993,6 +2002,13 @@ Same speed. 2.4× less memory.
         fn=_queue_admin_tick,
         inputs=[],
         outputs=[queue_admin],
+        queue=False,
+        show_progress="hidden",
+    )
+    demo.load(
+        fn=_queue_initial_controls,
+        inputs=[],
+        outputs=[queue_status, btn, queue_admin],
         queue=False,
         show_progress="hidden",
     )
