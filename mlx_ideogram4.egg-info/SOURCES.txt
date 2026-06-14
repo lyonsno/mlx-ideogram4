@@ -6,3 +6,5 @@ mlx_ideogram4.egg-info/SOURCES.txt
 mlx_ideogram4.egg-info/dependency_links.txt
 mlx_ideogram4.egg-info/requires.txt
 mlx_ideogram4.egg-info/top_level.txt
+tests/test_public_mode_contract.py
+tests/test_public_tunnel_contract.py

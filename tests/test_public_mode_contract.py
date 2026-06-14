@@ -205,6 +205,9 @@ class PublicModeContractTest(unittest.TestCase):
         self.assertIn("from huggingface_hub.utils import get_token", source)
         self.assertNotIn('open(os.path.expanduser("~/.cache/huggingface/token"))', source)
         self.assertNotIn("trust_remote_code=True", source)
+        self.assertNotIn("show_api=False", source)
+        self.assertIn('footer_links=["gradio", "settings"]', source)
+        self.assertIn('api_visibility="private"', source)
 
     def test_public_queue_admission_counts_and_full_state(self):
         ns = load_public_helpers()

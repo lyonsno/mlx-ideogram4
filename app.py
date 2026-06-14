@@ -2031,6 +2031,7 @@ Same speed. 2.4× less memory.
         outputs=[admission_token, info, queue_status, btn],
         queue=False,
         show_progress="hidden",
+        api_visibility="private",
     )
     admit_event.success(
         fn=_generate_with_admission,
@@ -2042,6 +2043,7 @@ Same speed. 2.4× less memory.
         ],
         outputs=[output_image, info, queue_status, btn],
         show_progress="minimal",
+        api_visibility="private",
     )
     prompt_preset.change(
         fn=_apply_text_preset,
@@ -2231,7 +2233,7 @@ if __name__ == "__main__":
     demo.launch(
         share=args.share,
         auth=auth,
-        show_api=False,
+        footer_links=["gradio", "settings"],
         allowed_paths=[os.path.join(os.path.dirname(__file__), "evidence")],
         css=_gallery_console_visibility_css(_PUBLIC_MODE),
         head=_gallery_console_visibility_head(),

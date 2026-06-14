@@ -38,16 +38,19 @@ The NF4 kernels are model-agnostic linear primitives. Ideogram4 proves they can 
 
 ## Performance
 
-Same prompt, same seed (2025), same machine (M4 Max 128 GB), uncontended. Memory is MLX-reported peak active memory during sampling (excludes model loading overhead):
+Representative receipts on Apple Silicon. Timing moves with machine contention and route setup, so the latest local smoke is listed separately from the fastest matrix receipts. Memory is MLX-reported peak active memory during sampling (excludes model loading overhead):
+
+<sub>**How memory is measured.** Peak figures come from MLX's own allocator counter, `mlx.core.get_peak_memory()` (bytes of GPU/unified memory at the high-water mark), read at the point noted per number — *sampling-only* for the benchmark tables (counter reset after model load), *full-run including load* for the 16 GB verification below. We report MLX's allocator peak rather than process RSS because RSS undercounts MLX's unified-memory buffers. As an independent cross-check, the 16 GB run was also traced at the system level (`vm_stat` / `vm.swapusage` sampled every 2s) to observe swap/compression behavior; that trace is what backs the "leaned on compression, never swapped" statement, not the memory numbers themselves.</sub>
 
 ### 512×512
 
 | Route | Format | Steps | s/step | Sampling | Peak Memory |
 |-------|--------|------:|-------:|---------:|------------:|
-| **NF4/MLX (this)** | **NF4 4-bit** | 20 | **6.5** | **130s** | **11.5 GB** |
+| **NF4/MLX latest local smoke** | **NF4 4-bit** | 20 | **7.5** | **151s** | **11.55 GB** |
+| **NF4/MLX fast matrix receipts** | **NF4 4-bit** | 20 | **3.3-3.4** | **67-69s** | **11.52 GB** |
 | MFLUX | FP8 8-bit | 20 | 8.9 | 178s | 28.1 GB |
 
-**27% faster, 2.4× less memory.**
+Latest local smoke: `evidence/live_runs/20260614T031410Z_nf4-mlx-metal_512x512_seed2025_smoke.json`. The fast matrix receipts are older uncontended runs under `evidence/matrix/`. The defensible headline is memory: NF4 uses roughly **2.4× less memory** than the recorded MFLUX FP8 comparison at 512×512.
 
 ### 1024×1024
 
@@ -67,6 +70,18 @@ Same prompt, same seed (2025), same machine (M4 Max 128 GB), uncontended. Memory
 | **32 GB** | **1024 ✓** | 512 ✓, 1024 barely | 512 ✓ |
 | **48 GB+** | All ✓ | All ✓ | All ✓ |
 
+**Verified on 16 GB** (M2 Pro MacBook Pro): 512×512 / 20 steps ran to completion
+in **9m48s** (21.8s/step — slower than the M4 Max purely from the smaller GPU)
+at **11.51 GB** full-run peak (MLX `get_peak_memory()`, including model load —
+essentially identical to the sampling-only 11.5 GB measured on the M4 Max, so
+load does not blow the budget). A 2-second system-level trace (`vm_stat`) shows
+the machine **leaned hard on memory compression — peak ~7.8 GB compressed, free
+memory routinely under ~100 MB — but never paged to swap** (swap stayed at 0
+throughout). It stayed responsive; the slowdown tracks the GPU gap, not memory
+pressure. The M2 Pro's GPU is a step up from the base M-series chip in the
+cheapest 16 GB MacBook Pro, but the 16 GB memory ceiling — the thing that gates
+whether the model fits at all — is identical.
+
 ## Install
 
 Requires macOS on Apple Silicon (M1+) and Python 3.10+.
@@ -76,16 +91,20 @@ Requires macOS on Apple Silicon (M1+) and Python 3.10+.
 git clone https://github.com/lyonsno/mlx-ideogram4.git
 cd mlx-ideogram4
 
-# 2. Install MLX with NF4 support (our fork — adds NF4 Metal kernels)
-pip install git+https://github.com/lyonsno/mlx.git@nf4
-
-# 3. Install this package and dependencies
+# 2. Install this package and dependencies FIRST
+#    (this pulls mlx-lm/mlx-vlm, which depend on stock MLX)
 pip install -e .
+
+# 3. Install MLX with NF4 support LAST so the fork wins
+#    (our fork — adds NF4 Metal kernels. Must come after step 2, or
+#     mlx-vlm's stock-MLX dependency silently overwrites it and you
+#     get `KeyError: 'nf4'` at runtime.)
+pip install --force-reinstall --no-deps git+https://github.com/lyonsno/mlx.git@nf4
 
 # 4. Accept the Ideogram4 license and log in to HuggingFace
 #    Visit: https://huggingface.co/ideogram-ai/ideogram-4-nf4
 #    Then:
-huggingface-cli login
+hf auth login
 
 # 5. Generate! (first run downloads ~16 GB of model weights)
 python generate.py \
@@ -98,6 +117,9 @@ Or with `uv` (no venv needed):
 ```bash
 git clone https://github.com/lyonsno/mlx-ideogram4.git
 cd mlx-ideogram4
+# Note: mlx-lm/mlx-vlm pull stock MLX, which can shadow the NF4 fork in the
+# resolved environment. If you hit `KeyError: 'nf4'`, fall back to the pip flow
+# above (install deps first, then --force-reinstall --no-deps the nf4 fork).
 uv run --with "mlx @ git+https://github.com/lyonsno/mlx.git@nf4" \
   --with safetensors --with huggingface_hub --with numpy \
   --with transformers --with pillow --with tqdm --with mlx-lm --with mlx-vlm \
@@ -109,7 +131,12 @@ uv run --with "mlx @ git+https://github.com/lyonsno/mlx.git@nf4" \
 ```bash
 pip install gradio
 python app.py              # local UI at http://127.0.0.1:7860
-python app.py --share      # public URL (tunneled through Gradio)
+
+# stable ngrok public tunnel, using a free ngrok dev domain you control.
+NGROK_DOMAIN=your-assigned-name.ngrok-free.dev ./serve.sh --public --tunnel ngrok
+
+# Temporary Gradio share URL; useful for a quick private smoke, not a stable public link.
+python app.py --share
 ```
 
 ### Presets
@@ -142,20 +169,6 @@ The core contribution is NF4 quantization for MLX:
 - **Full kernel family**: QMV (token gen), QVM, QMM (prefill), split-K, all instantiated across float/bfloat16/float16 × group sizes 32/64/128
 - **`mx.quantize/dequantize/quantized_matmul(mode='nf4')`** + **`nn.QuantizedLinear(mode='nf4')`**
 - **bitsandbytes weight loader**: reads NF4 safetensors directly, repacks nibbles to MLX uint32 format
-
-## How it was built
-
-One session (2026-06-10 to 2026-06-11):
-
-1. NF4 Metal kernel family from scratch (~900 lines)
-2. C++ dispatch + Python API integration (9 MLX core files)
-3. bitsandbytes NF4 safetensors weight loader
-4. Ideogram4 9.3B transformer port (34 layers, MRoPE, AdaLN, SwiGLU)
-5. Qwen3-VL 8.8B text encoder via mlx-vlm (discovered custom deepstack modules)
-6. Flux2 VAE decoder
-7. Pipeline with Euler flow-matching, logit-normal schedule, asymmetric CFG
-8. Profiling + scaled LUT optimization
-9. Three independent code reviews (kernels, weight loader, architecture parity)
 
 ## Credits
 
