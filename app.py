@@ -476,14 +476,53 @@ def _public_queue_mark_finished(token):
             _queue_waiting = max(0, _queue_waiting - 1)
 
 
+def _public_queue_wait_message(token):
+    if not token:
+        return None
+    snapshot = _public_queue_snapshot()
+    current = next((entry for entry in snapshot["entries"] if entry.get("token") == token), None)
+    if not current or current.get("state") != "waiting":
+        return None
+
+    current_sequence = current.get("sequence", 0)
+    active_ahead = snapshot["active"]
+    waiting_ahead = sum(
+        1 for entry in snapshot["entries"]
+        if entry.get("state") == "waiting" and entry.get("sequence", 0) < current_sequence
+    )
+    jobs_ahead = max(0, active_ahead + waiting_ahead)
+    spot = jobs_ahead + 1
+    admitted = max(snapshot["admitted"], spot)
+    noun = "job" if jobs_ahead == 1 else "jobs"
+    if jobs_ahead == 0:
+        ahead = "your image is next"
+    else:
+        ahead = f"you are waiting behind {jobs_ahead} public {noun}"
+    return (
+        f"Your spot: {spot} of {admitted} admitted jobs. "
+        f"{ahead.capitalize()}. Keep this tab open; your slot is still reserved."
+    )
+
+
 def _public_queue_button_update():
     if not _is_public_mode():
         return gr.update(interactive=True)
     return gr.update(interactive=not _public_queue_is_full())
 
 
-def _queue_status_tick():
-    return _public_queue_status_html(), _public_queue_button_update()
+def _public_queue_wait_info_update(token):
+    message = _public_queue_wait_message(token)
+    if message is None:
+        return gr.update()
+    return gr.update(value=message)
+
+
+def _queue_status_tick(admission_token=""):
+    return (
+        _public_queue_status_html(),
+        _public_queue_button_update(),
+        _public_queue_wait_info_update(admission_token),
+    )
 
 
 def _queue_admin_tick():
@@ -2006,8 +2045,8 @@ Same speed. 2.4× less memory.
 
     queue_timer.tick(
         fn=_queue_status_tick,
-        inputs=[],
-        outputs=[queue_status, btn],
+        inputs=[admission_token],
+        outputs=[queue_status, btn, info],
         queue=False,
         show_progress="hidden",
     )

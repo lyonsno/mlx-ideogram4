@@ -27,6 +27,7 @@ def load_public_helpers():
         "_public_queue_admin_html",
         "_public_queue_snapshot",
         "_public_queue_status_html",
+        "_public_queue_wait_message",
     }
     wanted_assigns = {
         "GALLERY_ADMIN_QUERY_PARAM",
@@ -296,6 +297,47 @@ class PublicModeContractTest(unittest.TestCase):
         self.assertIn("Queue slot reserved", message)
         self.assertIn("waiting behind 1 public job", message)
 
+    def test_public_queue_wait_message_reports_live_spot(self):
+        ns = load_public_helpers()
+        ns["_queue_active"] = 0
+        ns["_queue_waiting"] = 0
+        ns["_queue_next_id"] = 0
+        ns["_queue_tokens"] = {}
+        ns["_queue_records"] = {}
+
+        first, _ = ns["_public_queue_admit"]()
+        second, _ = ns["_public_queue_admit"]()
+        third, _ = ns["_public_queue_admit"]()
+        self.assertTrue(ns["_public_queue_mark_started"](first))
+
+        second_message = ns["_public_queue_wait_message"](second)
+        self.assertIn("Your spot: 2 of 3 admitted jobs", second_message)
+        self.assertIn("waiting behind 1 public job", second_message)
+        self.assertIn("Keep this tab open", second_message)
+
+        third_message = ns["_public_queue_wait_message"](third)
+        self.assertIn("Your spot: 3 of 3 admitted jobs", third_message)
+        self.assertIn("waiting behind 2 public jobs", third_message)
+
+    def test_public_queue_wait_message_stays_quiet_outside_waiting(self):
+        ns = load_public_helpers()
+        ns["_queue_active"] = 0
+        ns["_queue_waiting"] = 0
+        ns["_queue_next_id"] = 0
+        ns["_queue_tokens"] = {}
+        ns["_queue_records"] = {}
+
+        token, _ = ns["_public_queue_admit"]()
+
+        self.assertIsNone(ns["_public_queue_wait_message"](""))
+        self.assertIsNone(ns["_public_queue_wait_message"]("missing-token"))
+
+        self.assertTrue(ns["_public_queue_mark_started"](token))
+        self.assertIsNone(ns["_public_queue_wait_message"](token))
+
+        ns["_public_queue_mark_finished"](token)
+        self.assertIsNone(ns["_public_queue_wait_message"](token))
+
     def test_public_queue_status_strip_and_button_wiring(self):
         ns = load_public_helpers()
         ns["_queue_active"] = 1
@@ -324,6 +366,10 @@ class PublicModeContractTest(unittest.TestCase):
         self.assertIn("_generate_with_admission", source)
         self.assertIn("admit_event.success", source)
         self.assertIn("gr.update(interactive=not _public_queue_is_full())", source)
+        self.assertIn("def _queue_status_tick(admission_token", source)
+        self.assertIn("_public_queue_wait_info_update(admission_token)", source)
+        self.assertIn("inputs=[admission_token]", source)
+        self.assertIn("outputs=[queue_status, btn, info]", source)
 
     def test_public_queue_hydrates_status_button_and_admin_on_page_load(self):
         source = APP_PATH.read_text()
