@@ -111,7 +111,12 @@ uv run --with "mlx @ git+https://github.com/lyonsno/mlx.git@nf4" \
 ```bash
 pip install gradio
 python app.py              # local UI at http://127.0.0.1:7860
-python app.py --share      # public URL (tunneled through Gradio)
+
+# stable ngrok public tunnel, using a free ngrok dev domain you control.
+NGROK_DOMAIN=your-assigned-name.ngrok-free.dev ./serve.sh --public --tunnel ngrok
+
+# Temporary Gradio share URL; useful for a quick private smoke, not a stable public link.
+python app.py --share
 ```
 
 ### Presets

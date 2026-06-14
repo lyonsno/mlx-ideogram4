@@ -1,4 +1,5 @@
 import pathlib
+import subprocess
 import unittest
 
 
@@ -25,6 +26,18 @@ class PublicTunnelContractTest(unittest.TestCase):
         source = SERVE_SH.read_text()
         self.assertIn(".venv/bin/python", source)
         self.assertNotIn("exec uv run", source)
+
+    def test_serve_help_includes_full_stable_url_note(self):
+        result = subprocess.run(
+            ["bash", str(SERVE_SH), "--help"],
+            cwd=ROOT,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertIn("repeatable public URL.", result.stdout)
+        self.assertTrue(result.stdout.rstrip().endswith("repeatable public URL."))
 
     def test_static_landing_page_has_configured_demo_url(self):
         html = LANDING.read_text()
@@ -74,6 +87,12 @@ class PublicTunnelContractTest(unittest.TestCase):
         self.assertIn("NGROK_DOMAIN", source)
         self.assertIn("Cloudflare", source)
         self.assertIn("random", source)
+
+    def test_readme_prefers_stable_tunnel_over_gradio_share_for_public_demo(self):
+        source = (ROOT / "README.md").read_text()
+        self.assertIn("stable ngrok", source)
+        self.assertIn("./serve.sh --public --tunnel ngrok", source)
+        self.assertNotIn("python app.py --share      # public URL", source)
 
 
 if __name__ == "__main__":
